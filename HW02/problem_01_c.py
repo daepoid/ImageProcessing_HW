@@ -63,7 +63,11 @@ def basic_contrast_stretching(raw_data):
             max_val = raw_data[i]
 
     for i in range(len(raw_data)):
-        hist_data[i] = int((raw_data[i] - min_val) / (max_val - min_val) * 255)
+        hist_data[i] = int(255 * (raw_data[i] - min_val) / (max_val - min_val) + 0.5)
+        if hist_data[i] > 255:
+            hist_data[i] = 255
+        elif hist_data[i] < 0:
+            hist_data[i] = 0
     
     return hist_data
 

@@ -51,7 +51,12 @@ def hist_equalization(raw_data, count_num_list):
         accumulate_sum += count_num_list[i]
 
         # 정규화를 통해 매핑에 사용할 LUT 생성
-        LUT[i] = int(255 * accumulate_sum / (512 * 512))
+        LUT[i] = int(255 * accumulate_sum / (512 * 512) + 0.5)
+        
+        if LUT[i] > 255:
+            LUT[i] = 255
+        elif LUT[i] < 0:
+            LUT[i] = 0
 
     # LUT를 이용하여 결과 값 생성
     hist_data = [0 for i in range(len(raw_data))]

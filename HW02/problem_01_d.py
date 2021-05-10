@@ -57,13 +57,11 @@ def endsin_contrast_stretching(raw_data):
     max_val = 190
 
     for i in range(len(raw_data)):
-        temp = int((raw_data[i] - min_val) / (max_val - min_val) * 255)
-        if temp > 255:
+        hist_data[i] = int(255 * (raw_data[i] - min_val) / (max_val - min_val) + 0.5)
+        if hist_data[i] > 255:
             hist_data[i] = 255
-        elif temp < 0:
-            hist_data[i] = 0            
-        else:
-            hist_data[i] = temp
+        elif hist_data[i] < 0:
+            hist_data[i] = 0
     
     return hist_data
 
