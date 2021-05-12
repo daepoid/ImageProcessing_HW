@@ -7,7 +7,7 @@
 #include <wingdi.h>
 #define MAX 512
 #define SNR 8.0
-#define THRESHOLD 150
+#define THRESHOLD 170
 using namespace std;
 
 typedef struct headers {
@@ -60,7 +60,7 @@ void reverse_raw_data(BYTE *image) {
 }
 
 double Calculate_Variance(BYTE *image) {
-  double avg_1, avg_2;
+  double avg_1 = 0, avg_2 = 0;
   for (int i = 0; i < MAX; i++) {
     for (int j = 0; j < MAX; j++) {
       int temp = image[i * MAX + j];
@@ -101,10 +101,9 @@ int Gaussian(double sigma) {
 }
 
 void Add_Gaussian_Noise(BYTE *image, BYTE *noise, double sigma) {
-  long long int a = sizeof(*noise);
   for (int i = 0; i < MAX; i++) {
     for (int j = 0; j < MAX; j++) {
-      int s = image[i * MAX + j] + Gaussian(sigma);
+      int s = image[i * MAX + j] + (Gaussian(sigma) + 0.5);
       if (s > 255) {
         s = 255;
       }
@@ -120,7 +119,7 @@ bool isvalid(int newy, int newx) {
   return 0 <= newy && newy < MAX && 0 <= newx && newx < MAX;
 }
 
-void masking(BYTE *noise, int y, int x, int mask[][3][3]) {
+void masking(BYTE *noise, BYTE *image, int y, int x, int mask[][3][3]) {
   int avg_1 = 0, avg_2 = 0;
 
   for (int i = 0; i < 3; i++) {
@@ -129,7 +128,6 @@ void masking(BYTE *noise, int y, int x, int mask[][3][3]) {
       int newx = x + j - 1;
 
       if (!isvalid(newy, newx)) {
-        // 임시로 zero padding을 수행
         if (newy < 0) {
           newy += 1;
         } else if (newy >= MAX) {
@@ -141,14 +139,16 @@ void masking(BYTE *noise, int y, int x, int mask[][3][3]) {
         } else if (newx >= MAX) {
           newx -= 1;
         }
-        avg_1 += noise[newy * MAX + newx] * mask[0][i][j];
-        avg_2 += noise[newy * MAX + newx] * mask[1][i][j];
+
+        avg_1 += image[newy * MAX + newx] * mask[0][i][j];
+        avg_2 += image[newy * MAX + newx] * mask[1][i][j];
       } else {
-        avg_1 += noise[newy * MAX + newx] * mask[0][i][j];
-        avg_2 += noise[newy * MAX + newx] * mask[1][i][j];
+        avg_1 += image[newy * MAX + newx] * mask[0][i][j];
+        avg_2 += image[newy * MAX + newx] * mask[1][i][j];
       }
     }
   }
+
   double val = sqrt(avg_1 * avg_1 + avg_2 * avg_2);
 
   if (THRESHOLD <= val) {
@@ -170,28 +170,23 @@ void make_bmp(BYTE *output_image, string output_name) {
   fwrite(bh.hRGB, sizeof(RGBQUAD), 256, output_file);
 
   fwrite(output_image, sizeof(BYTE), MAX * MAX, output_file);
-  // fclose(output_file);
+  fclose(output_file);
   return;
 }
 
-void Edge_Detection_3(BYTE *image, int mask[][3][3], string output_name) {
+void EdgeDetection_3(BYTE *image, int mask[][3][3], string output_name) {
   BYTE *noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  memcpy(noise, image, sizeof(image));
+  // memcpy(noise, image, sizeof(image));
 
   BYTE *ori_image = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  memcpy(ori_image, image, sizeof(image));
-
-  // 입력받은 마스크를 이용하여 Edge Detection을 진행하고, 결과영상을 만든다.
-  // 추가로 계산된 오류값이 얼마인지도 콘솔로 출력해준다.
-  // 콘솔로 출력하는 대신에 파일 이름으로 출력할 수 있다.
+  // memcpy(ori_image, image, sizeof(image));
 
   // Original Image Edge Detection
   for (int i = 0; i < MAX; i++) {
     for (int j = 0; j < MAX; j++) {
-      masking(image, i, j, mask);
+      masking(ori_image, image, i, j, mask);
     }
   }
-  make_bmp(ori_image, "original_" + output_name);
 
   // Add Gaussian Noise
   double variance = Calculate_Variance(image);
@@ -201,18 +196,28 @@ void Edge_Detection_3(BYTE *image, int mask[][3][3], string output_name) {
   // Noisy Image Edge Detection
   for (int i = 0; i < MAX; i++) {
     for (int j = 0; j < MAX; j++) {
-      masking(noise, i, j, mask);
+      masking(noise, image, i, j, mask);
     }
   }
+  double sum = 0;
+
+  for (int i = 0; i < MAX; i++) {
+    for (int j = 0; j < MAX; j++) {
+      sum = sum + abs(ori_image[i * MAX + j] - noise[i * MAX + j]);
+    }
+  }
+  printf("%lf\n", sum);
+
+  make_bmp(ori_image, output_name + "_original");
   make_bmp(noise, output_name);
 }
 
-void Stochastic(BYTE *image) {
-  double roberts[5][5] = {{0.267, 0.364, 0, -0.364, -0.267},
-                          {0.373, 0.562, 0, -0.562, -0.373},
-                          {0.463, 1.000, 0, -1.000, -0.463},
-                          {0.373, 0.562, 0, -0.562, -0.373},
-                          {0.267, 0.364, 0, -0.364, -0.267}};
+void Stochastic_EdgeDetection(BYTE *image) {
+  double Stochastic[5][5] = {{0.267, 0.364, 0, -0.364, -0.267},
+                             {0.373, 0.562, 0, -0.562, -0.373},
+                             {0.463, 1.000, 0, -1.000, -0.463},
+                             {0.373, 0.562, 0, -0.562, -0.373},
+                             {0.267, 0.364, 0, -0.364, -0.267}};
   BYTE *noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
   memcpy(noise, image, sizeof(image));
 
@@ -230,18 +235,18 @@ int main() {
   fread(image, sizeof(BYTE), MAX * MAX, input_file);
   fclose(input_file);
 
-  int roberts[2][3][3] = {{{0, 0, -1}, {0, 1, 0}, {0, 0, 0}},
+  int Roberts[2][3][3] = {{{0, 0, -1}, {0, 1, 0}, {0, 0, 0}},
                           {{-1, 0, 0}, {0, 1, 0}, {0, 0, 0}}};
 
-  int prewitt[2][3][3] = {{{1, 0, -1}, {1, 0, -1}, {1, 0, -1}},
+  int Prewitt[2][3][3] = {{{1, 0, -1}, {1, 0, -1}, {1, 0, -1}},
                           {{-1, -1, -1}, {0, 0, 0}, {1, 1, 1}}};
 
-  int sobel[2][3][3] = {{{1, 0, -1}, {2, 0, -2}, {1, 0, -1}},
+  int Sobel[2][3][3] = {{{1, 0, -1}, {2, 0, -2}, {1, 0, -1}},
                         {{-1, -2, -1}, {0, 0, 0}, {1, 2, 1}}};
 
-  Edge_Detection_3(image, roberts, "Roberts");
-  Edge_Detection_3(image, sobel, "Sobel");
-  Edge_Detection_3(image, prewitt, "Prewitt");
-  Stochastic(image);
+  EdgeDetection_3(image, Roberts, "Roberts");
+  EdgeDetection_3(image, Sobel, "Sobel");
+  EdgeDetection_3(image, Prewitt, "Prewitt");
+  Stochastic_EdgeDetection(image);
   return 0;
 }
