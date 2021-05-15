@@ -5,12 +5,14 @@
 #include <ctime>
 #include <fstream>
 #include <iostream>
-#include <random>
 #include <string>
 #include <windows.h>
 #include <wingdi.h>
 #define MAX 512
-#define SNR 9.0
+#define SNR 8.0
+#define WHITE 255
+#define BLACK 1
+#define THRESHOLD 150
 using namespace std;
 
 typedef struct headers {
@@ -62,7 +64,8 @@ void make_bmp(BYTE *output_image, string output_name) {
 
   BITMAPHEADERS bh;
   generate_headers(bh);
-  string PATH = "outputs/" + output_name + "_EdgeDetection.bmp";
+  string PATH = "outputs/" + output_name + "_EdgeDetection(" +
+                to_string(THRESHOLD) + ").bmp";
   FILE *output_file = fopen(PATH.c_str(), "wb");
 
   fwrite(&bh.hFile, sizeof(BITMAPFILEHEADER), 1, output_file);
@@ -74,7 +77,7 @@ void make_bmp(BYTE *output_image, string output_name) {
   return;
 }
 
-double calculate_variance(BYTE *image) {
+double Calculate_Variance(BYTE *image) {
   double avg_1 = 0, avg_2 = 0;
 
   for (int i = 0; i < MAX; i++) {
@@ -116,7 +119,7 @@ double Gaussian(double sigma) {
   return gaus * sigma;
 }
 
-void add_gaussian_noise(BYTE *image, BYTE *noise, double sigma) {
+void Add_Gaussian_Noise(BYTE *image, BYTE *noise, double sigma) {
   int s;
   for (int i = 0; i < MAX; i++) {
     for (int j = 0; j < MAX; j++) {
@@ -132,23 +135,15 @@ void add_gaussian_noise(BYTE *image, BYTE *noise, double sigma) {
   }
 }
 
-int calculate_MSE(BYTE *masked_image, BYTE *masked_noise) {
-  long long int mse = 0;
-  for (int i = 0; i < MAX; i++) {
-    for (int j = 0; j < MAX; j++) {
-      mse += pow((masked_image[i * MAX + j] - masked_noise[i * MAX + j]), 2);
-    }
-  }
-  return (int)(mse / (MAX * MAX));
-}
-
-void lowpass_masking(BYTE *masked_image, BYTE *image, double mask[9]) {
+void Masking(BYTE *masked, BYTE *image, int mask[][9]) {
   int dy[9] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
   int dx[9] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
 
   for (int y = 0; y < MAX; y++) {
     for (int x = 0; x < MAX; x++) {
-      int avg = 0;
+      double avg_1 = 0.0;
+      double avg_2 = 0.0;
+
       for (int i = 0; i < 9; i++) {
         int newy = y + dy[i];
         int newx = x + dx[i];
@@ -164,26 +159,89 @@ void lowpass_masking(BYTE *masked_image, BYTE *image, double mask[9]) {
         } else if (newx >= MAX) {
           newx = MAX - 1;
         }
-        avg += image[newy * MAX + newx] * mask[i];
+        avg_1 += image[newy * MAX + newx] * mask[0][i];
+        avg_2 += image[newy * MAX + newx] * mask[1][i];
       }
-      masked_image[y * MAX + x] = (BYTE)avg;
+
+      // double val = sqrt(avg_1 * avg_1 + avg_2 * avg_2);
+      double val = abs(avg_1 + 0.5) + abs(avg_2 + 0.5);
+      if (THRESHOLD <= val) {
+        masked[y * MAX + x] = (BYTE)WHITE;
+      } else {
+        masked[y * MAX + x] = (BYTE)BLACK;
+      }
     }
   }
 }
 
-void lowpass_filter(BYTE *image, BYTE *noise, string output_name) {
-  double Lowpass[9] = {1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0,
-                       1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0};
+void Masking(BYTE *masked_image, BYTE *image, double mask[][25]) {
+  int dy[25] = {-2, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0,
+                0,  0,  1,  1,  1,  1,  1,  2,  2,  2,  2, 2};
+  int dx[25] = {-2, -1, 0,  1,  2, -2, -1, 0,  1,  2, -2, -1, 0,
+                1,  2,  -2, -1, 0, 1,  2,  -2, -1, 0, 1,  2};
 
+  for (int y = 0; y < MAX; y++) {
+    for (int x = 0; x < MAX; x++) {
+      double avg_1 = 0.0;
+      double avg_2 = 0.0;
+
+      for (int i = 0; i < 25; i++) {
+        int newy = y + dy[i];
+        int newx = x + dx[i];
+
+        if (newy < 0) {
+          newy = 0;
+        } else if (newy >= MAX) {
+          newy = MAX - 1;
+        }
+
+        if (newx < 0) {
+          newx = 0;
+        } else if (newx >= MAX) {
+          newx = MAX - 1;
+        }
+        avg_1 += (double)image[newy * MAX + newx] * mask[0][i];
+        avg_2 += (double)image[newy * MAX + newx] * mask[1][i];
+      }
+
+      double val = sqrt(avg_1 * avg_1 + avg_2 * avg_2);
+      if (THRESHOLD <= val) {
+        masked_image[y * MAX + x] = (BYTE)WHITE;
+      } else {
+        masked_image[y * MAX + x] = (BYTE)BLACK;
+      }
+    }
+  }
+}
+
+double calculate_error_rate(BYTE *masked_original, BYTE *masked_noise) {
+  double n0 = 0, n1 = 0;
+  for (int i = 0; i < MAX; i++) {
+    for (int j = 0; j < MAX; j++) {
+      if (masked_original[i * MAX + j] == WHITE) {
+        n0++;
+      }
+
+      if (masked_original[i * MAX + j] != masked_noise[i * MAX + j]) {
+        n1++;
+      }
+    }
+  }
+  return n1 / n0;
+}
+
+void Edge_Detection(BYTE *image, BYTE *noise, int mask[][9],
+                    string output_name) {
   // Original Image Edge Detection
   BYTE *masked_original = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  lowpass_masking(masked_original, image, Lowpass);
+  Masking(masked_original, image, mask);
 
   // Noisy Image Edge Detection
   BYTE *masked_noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  lowpass_masking(masked_noise, noise, Lowpass);
-  printf("%s MSE : %d\n", output_name.c_str(),
-         calculate_MSE(masked_original, masked_noise));
+  Masking(masked_noise, noise, mask);
+
+  printf("%s Edge Detection Error Rate : %lf\n", output_name.c_str(),
+         calculate_error_rate(masked_original, masked_noise));
 
   make_bmp(masked_original, output_name + "_Original");
   make_bmp(masked_noise, output_name);
@@ -192,47 +250,19 @@ void lowpass_filter(BYTE *image, BYTE *noise, string output_name) {
   free(masked_original);
 }
 
-void median_masking(BYTE *masked, BYTE *image) {
-  int dy[9] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
-  int dx[9] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
+void Edge_Detection(BYTE *image, BYTE *noise, double mask[][25],
+                    string output_name) {
 
-  for (int y = 0; y < MAX; y++) {
-    for (int x = 0; x < MAX; x++) {
-      int arr[9] = {};
-
-      for (int i = 0; i < 9; i++) {
-        int newy = y + dy[i];
-        int newx = x + dx[i];
-
-        if (newy < 0) {
-          newy = 0;
-        } else if (newy >= MAX) {
-          newy = MAX - 1;
-        }
-
-        if (newx < 0) {
-          newx = 0;
-        } else if (newx >= MAX) {
-          newx = MAX - 1;
-        }
-        arr[i] = image[newy * MAX + newx];
-      }
-      sort(arr, arr + 9);
-      masked[y * MAX + x] = (BYTE)arr[4];
-    }
-  }
-}
-
-void median_filter(BYTE *image, BYTE *noise, string output_name) {
+  // Original Image Edge Detection
   BYTE *masked_original = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  median_masking(masked_original, image);
+  Masking(masked_original, image, mask);
 
   // Noisy Image Edge Detection
   BYTE *masked_noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  median_masking(masked_noise, noise);
+  Masking(masked_noise, noise, mask);
 
-  printf("%s MSE : %d\n", output_name.c_str(),
-         calculate_MSE(masked_original, masked_noise));
+  printf("%s Edge Detection Error Rate : %lf\n", output_name.c_str(),
+         calculate_error_rate(masked_original, masked_noise));
 
   make_bmp(masked_original, output_name + "_Original");
   make_bmp(masked_noise, output_name);
@@ -243,8 +273,21 @@ void median_filter(BYTE *image, BYTE *noise, string output_name) {
 
 int main() {
   srand((unsigned int)time(NULL));
+  int Roberts[2][9] = {{0, 0, -1, 0, 1, 0, 0, 0, 0},
+                       {-1, 0, 0, 0, 1, 0, 0, 0, 0}};
+  int Prewitt[2][9] = {{1, 0, -1, 1, 0, -1, 1, 0, -1},
+                       {-1, -1, -1, 0, 0, 0, 1, 1, 1}};
+  int Sobel[2][9] = {{1, 0, -1, 2, 0, -2, 1, 0, -1},
+                     {-1, -2, -1, 0, 0, 0, 1, 2, 1}};
+  double stochastic[2][25] = {
+      {0.267,  0.364,  0,     -0.364, -0.267, 0.373,  0.562, 0,     -0.562,
+       -0.373, 0.463,  1.000, 0,      -1.000, -0.463, 0.373, 0.562, 0,
+       -0.562, -0.373, 0.267, 0.364,  0,      -0.364, -0.267},
+      {-0.267, -0.373, -0.463, -0.373, -0.267, -0.364, -0.562, -1.000, -0.562,
+       -0.364, 0,      0,      0,      0,      0,      0.364,  0.562,  1.000,
+       0.562,  0.364,  0.267,  0.373,  0.463,  0.373,  0.267}};
 
-  FILE *input_file = fopen("BOAT512.raw", "rb");
+  FILE *input_file = fopen("lena_raw_512x512.raw", "rb");
   if (input_file == NULL) {
     printf("FILE ERROR\n");
     return 0;
@@ -256,12 +299,19 @@ int main() {
 
   // Add Gaussian Noise
   BYTE *noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  double variance = calculate_variance(image);
+  double variance = Calculate_Variance(image);
   double stddev_noise = sqrt(variance / pow(10.0, ((double)SNR / 10)));
-  add_gaussian_noise(image, noise, stddev_noise);
+  Add_Gaussian_Noise(image, noise, stddev_noise);
+  make_bmp(image, "0-1. Lena_Original");
+  reverse_raw_data(image);
+  make_bmp(noise, "0-2. Lena_GaussianNoise");
+  reverse_raw_data(noise);
 
-  lowpass_filter(image, noise, "2-1. Lowpass");
-  median_filter(image, noise, "2-2. Median");
+  Edge_Detection(image, noise, Roberts, "1-1. Roberts");
+  Edge_Detection(image, noise, Prewitt, "1-2. Prewitt");
+  Edge_Detection(image, noise, Sobel, "1-3. Sobel");
+
+  Edge_Detection(image, noise, stochastic, "1-4. Stochastic");
 
   return 0;
 }

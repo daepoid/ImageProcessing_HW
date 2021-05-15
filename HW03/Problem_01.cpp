@@ -237,7 +237,8 @@ void EdgeDetection_3(BYTE *image, BYTE *noise, int mask[][9],
   BYTE *masked_noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
   Masking(masked_noise, noise, mask);
 
-  printf("%lf\n", calculate_error_rate(masked_original, masked_noise));
+  printf("%s Edge Detection Error Rate : %lf\n", output_name.c_str(),
+         calculate_error_rate(masked_original, masked_noise));
 
   make_bmp(masked_original, output_name + "_Original");
   make_bmp(masked_noise, output_name);
@@ -263,7 +264,8 @@ void Stochastic_EdgeDetection(BYTE *image, BYTE *noise, string output_name) {
   BYTE *masked_noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
   Masking(masked_noise, noise, stochastic);
 
-  printf("%lf\n", calculate_error_rate(masked_original, masked_noise));
+  printf("%s Edge Detection Error Rate : %lf\n", output_name.c_str(),
+         calculate_error_rate(masked_original, masked_noise));
 
   make_bmp(masked_original, output_name + "_Original");
   make_bmp(masked_noise, output_name);
