@@ -62,7 +62,7 @@ void make_bmp(BYTE *output_image, string output_name) {
 
   BITMAPHEADERS bh;
   generate_headers(bh);
-  string PATH = "outputs/" + output_name + "_EdgeDetection.bmp";
+  string PATH = "outputs/" + output_name + ".bmp";
   FILE *output_file = fopen(PATH.c_str(), "wb");
 
   fwrite(&bh.hFile, sizeof(BITMAPFILEHEADER), 1, output_file);

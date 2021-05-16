@@ -1,15 +1,18 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
+#include <ctime>
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <string>
 #include <windows.h>
 #include <wingdi.h>
 #define MAX 512
 #define SNR 8.0
 #define WHITE 255
-#define BLACK 1
+#define BLACK 0
 #define THRESHOLD 150
 using namespace std;
 
@@ -75,7 +78,7 @@ void make_bmp(BYTE *output_image, string output_name) {
   return;
 }
 
-double Calculate_Variance(BYTE *image) {
+double calculate_variance(BYTE *image) {
   double avg_1 = 0, avg_2 = 0;
 
   for (int i = 0; i < MAX; i++) {
@@ -117,7 +120,7 @@ double Gaussian(double sigma) {
   return gaus * sigma;
 }
 
-void Add_Gaussian_Noise(BYTE *image, BYTE *noise, double sigma) {
+void add_gaussian_noise(BYTE *image, BYTE *noise, double sigma) {
   int s;
   for (int i = 0; i < MAX; i++) {
     for (int j = 0; j < MAX; j++) {
@@ -133,14 +136,14 @@ void Add_Gaussian_Noise(BYTE *image, BYTE *noise, double sigma) {
   }
 }
 
-void Masking(BYTE *masked, BYTE *image, int mask[][9]) {
+void masking(BYTE *masked, BYTE *image, int mask[][9]) {
   int dy[9] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
   int dx[9] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
 
   for (int y = 0; y < MAX; y++) {
     for (int x = 0; x < MAX; x++) {
-      double avg_1 = 0.0;
-      double avg_2 = 0.0;
+      int avg_1 = 0;
+      int avg_2 = 0;
 
       for (int i = 0; i < 9; i++) {
         int newy = y + dy[i];
@@ -157,11 +160,15 @@ void Masking(BYTE *masked, BYTE *image, int mask[][9]) {
         } else if (newx >= MAX) {
           newx = MAX - 1;
         }
+
         avg_1 += image[newy * MAX + newx] * mask[0][i];
         avg_2 += image[newy * MAX + newx] * mask[1][i];
       }
 
-      double val = sqrt(avg_1 * avg_1 + avg_2 * avg_2);
+      // int val = sqrt(avg_1 * avg_1 + avg_2 * avg_2);
+      //   double val = abs(avg_1 + 0.5) + abs(avg_2 + 0.5);
+      //   double val = abs(avg_1) + abs(avg_2);
+      int val = abs(avg_1) + abs(avg_2);
       if (THRESHOLD <= val) {
         masked[y * MAX + x] = (BYTE)WHITE;
       } else {
@@ -171,7 +178,7 @@ void Masking(BYTE *masked, BYTE *image, int mask[][9]) {
   }
 }
 
-void Masking(BYTE *masked_image, BYTE *image, double mask[][25]) {
+void masking(BYTE *masked_image, BYTE *image, double mask[][25]) {
   int dy[25] = {-2, -2, -2, -2, -2, -1, -1, -1, -1, -1, 0, 0, 0,
                 0,  0,  1,  1,  1,  1,  1,  2,  2,  2,  2, 2};
   int dx[25] = {-2, -1, 0,  1,  2, -2, -1, 0,  1,  2, -2, -1, 0,
@@ -201,7 +208,9 @@ void Masking(BYTE *masked_image, BYTE *image, double mask[][25]) {
         avg_2 += (double)image[newy * MAX + newx] * mask[1][i];
       }
 
-      double val = sqrt(avg_1 * avg_1 + avg_2 * avg_2);
+      //   double val = sqrt(avg_1 * avg_1 + avg_2 * avg_2);
+      //   double val = abs(avg_1 + 0.5) + abs(avg_2 + 0.5);
+      double val = abs(avg_1) + abs(avg_2);
       if (THRESHOLD <= val) {
         masked_image[y * MAX + x] = (BYTE)WHITE;
       } else {
@@ -227,15 +236,15 @@ double calculate_error_rate(BYTE *masked_original, BYTE *masked_noise) {
   return n1 / n0;
 }
 
-void EdgeDetection_3(BYTE *image, BYTE *noise, int mask[][9],
-                     string output_name) {
+void edge_detection(BYTE *image, BYTE *noise, int mask[][9],
+                    string output_name) {
   // Original Image Edge Detection
   BYTE *masked_original = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  Masking(masked_original, image, mask);
+  masking(masked_original, image, mask);
 
   // Noisy Image Edge Detection
   BYTE *masked_noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  Masking(masked_noise, noise, mask);
+  masking(masked_noise, noise, mask);
 
   printf("%s Edge Detection Error Rate : %lf\n", output_name.c_str(),
          calculate_error_rate(masked_original, masked_noise));
@@ -247,22 +256,16 @@ void EdgeDetection_3(BYTE *image, BYTE *noise, int mask[][9],
   free(masked_original);
 }
 
-void Stochastic_EdgeDetection(BYTE *image, BYTE *noise, string output_name) {
-  double stochastic[2][25] = {
-      {0.267,  0.364,  0,     -0.364, -0.267, 0.373,  0.562, 0,     -0.562,
-       -0.373, 0.463,  1.000, 0,      -1.000, -0.463, 0.373, 0.562, 0,
-       -0.562, -0.373, 0.267, 0.364,  0,      -0.364, -0.267},
-      {-0.267, -0.373, -0.463, -0.373, -0.267, -0.364, -0.562, -1.000, -0.562,
-       -0.364, 0,      0,      0,      0,      0,      0.364,  0.562,  1.000,
-       0.562,  0.364,  0.267,  0.373,  0.463,  0.373,  0.267}};
+void edge_detection(BYTE *image, BYTE *noise, double mask[][25],
+                    string output_name) {
 
   // Original Image Edge Detection
   BYTE *masked_original = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  Masking(masked_original, image, stochastic);
+  masking(masked_original, image, mask);
 
   // Noisy Image Edge Detection
   BYTE *masked_noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  Masking(masked_noise, noise, stochastic);
+  masking(masked_noise, noise, mask);
 
   printf("%s Edge Detection Error Rate : %lf\n", output_name.c_str(),
          calculate_error_rate(masked_original, masked_noise));
@@ -272,12 +275,20 @@ void Stochastic_EdgeDetection(BYTE *image, BYTE *noise, string output_name) {
 }
 
 int main() {
+  srand((unsigned int)time(NULL));
   int Roberts[2][9] = {{0, 0, -1, 0, 1, 0, 0, 0, 0},
                        {-1, 0, 0, 0, 1, 0, 0, 0, 0}};
   int Prewitt[2][9] = {{1, 0, -1, 1, 0, -1, 1, 0, -1},
                        {-1, -1, -1, 0, 0, 0, 1, 1, 1}};
   int Sobel[2][9] = {{1, 0, -1, 2, 0, -2, 1, 0, -1},
                      {-1, -2, -1, 0, 0, 0, 1, 2, 1}};
+  double Stochastic[2][25] = {
+      {0.267,  0.364,  0,     -0.364, -0.267, 0.373,  0.562, 0,     -0.562,
+       -0.373, 0.463,  1.000, 0,      -1.000, -0.463, 0.373, 0.562, 0,
+       -0.562, -0.373, 0.267, 0.364,  0,      -0.364, -0.267},
+      {-0.267, -0.373, -0.463, -0.373, -0.267, -0.364, -0.562, -1.000, -0.562,
+       -0.364, 0,      0,      0,      0,      0,      0.364,  0.562,  1.000,
+       0.562,  0.364,  0.267,  0.373,  0.463,  0.373,  0.267}};
 
   FILE *input_file = fopen("lena_raw_512x512.raw", "rb");
   if (input_file == NULL) {
@@ -291,15 +302,20 @@ int main() {
 
   // Add Gaussian Noise
   BYTE *noise = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  double variance = Calculate_Variance(image);
+  double variance = calculate_variance(image);
   double stddev_noise = sqrt(variance / pow(10.0, ((double)SNR / 10)));
-  Add_Gaussian_Noise(image, noise, stddev_noise);
+  add_gaussian_noise(image, noise, stddev_noise);
 
-  EdgeDetection_3(image, noise, Roberts, "1-1. Roberts");
-  EdgeDetection_3(image, noise, Prewitt, "1-2. Prewitt");
-  EdgeDetection_3(image, noise, Sobel, "1-3. Sobel");
+  make_bmp(image, "0-1. Lena_Original");
+  reverse_raw_data(image);
+  make_bmp(noise, "0-2. Lena_GaussianNoise");
+  reverse_raw_data(noise);
 
-  Stochastic_EdgeDetection(image, noise, "1-4. Stochastic");
+  edge_detection(image, noise, Roberts, "1-1. Roberts");
+  edge_detection(image, noise, Prewitt, "1-2. Prewitt");
+  edge_detection(image, noise, Sobel, "1-3. Sobel");
+
+  edge_detection(image, noise, Stochastic, "1-4. Stochastic");
 
   return 0;
 }

@@ -3,6 +3,11 @@
         "xlocale": "cpp",
         "xstring": "cpp",
         "cstdio": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "ctime": "cpp",
+        "cstdlib": "cpp",
+        "utility": "cpp",
+        "random": "cpp",
+        "iostream": "cpp"
     }
 }
