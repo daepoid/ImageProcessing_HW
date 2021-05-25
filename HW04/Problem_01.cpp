@@ -10,7 +10,7 @@
 #include <windows.h>
 #include <wingdi.h>
 #define MAX 512
-#define B_size 8
+#define B_SIZE 8
 #define nint(x) ((x) < 0. ? (int)((x)-0.5) : (int)((x) + 0.5))
 using namespace std;
 
@@ -76,10 +76,10 @@ void make_bmp(BYTE *output_image, string output_name) {
   return;
 }
 
-void dct_block(int ix[][B_size]) {
+void block_dct(int ix[][B_SIZE]) {
   static float pi = 3.141592653589793238;
-  float x[B_size][B_size], z[B_size][B_size], y[B_size], c[40], s[40], ft[4],
-      fxy[4], yy[B_size], zz;
+  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], c[40], s[40], ft[4],
+      fxy[4], yy[B_SIZE], zz;
 
   for (int i = 0; i < 40; i++) {
     zz = pi * (float)(i + 1) / 64.0;
@@ -87,14 +87,14 @@ void dct_block(int ix[][B_size]) {
     s[i] = sin(zz);
   }
 
-  for (int i = 0; i < B_size; i++) {
-    for (int j = 0; j < B_size; j++) {
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
       x[i][j] = (float)ix[i][j];
     }
   }
 
-  for (int i = 0; i < B_size; i++) {
-    for (int j = 0; j < B_size; j++) {
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
       y[j] = x[i][j];
     }
 
@@ -135,13 +135,13 @@ void dct_block(int ix[][B_size]) {
     y[3] = -s[11] * yy[5] + c[11] * yy[6];
     y[7] = -s[27] * yy[4] + c[27] * yy[7];
 
-    for (int j = 0; j < B_size; j++) {
+    for (int j = 0; j < B_SIZE; j++) {
       z[i][j] = y[j];
     }
   }
 
-  for (int i = 0; i < B_size; i++) {
-    for (int j = 0; j < B_size; j++) {
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
       y[j] = z[j][i];
     }
 
@@ -182,17 +182,137 @@ void dct_block(int ix[][B_size]) {
     y[3] = -s[11] * yy[5] + c[11] * yy[6];
     y[7] = -s[27] * yy[4] + c[27] * yy[7];
 
-    for (int j = 0; j < B_size; j++) {
+    for (int j = 0; j < B_SIZE; j++) {
       y[j] = y[j] / 4.0;
     }
 
-    for (int j = 0; j < B_size; j++) {
+    for (int j = 0; j < B_SIZE; j++) {
       z[j][i] = y[j];
     }
   }
 
-  for (int i = 0; i < B_size; i++) {
-    for (int j = 0; j < B_size; j++) {
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
+      ix[i][j] = nint(z[i][j]);
+    }
+  }
+}
+
+void block_inverse_dct(int ix[][B_SIZE]) {
+  static float pi = 3.141592653589793238;
+  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], c[40], s[40], ait[4],
+      aixy[4], yy[B_SIZE], zz;
+
+  for (int i = 0; i < 40; i++) {
+    zz = pi * (float)(i + 1) / 64.0;
+    c[i] = cos(zz);
+    s[i] = sin(zz);
+  }
+
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
+      x[i][j] = (float)ix[i][j];
+    }
+  }
+
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
+      y[j] = x[j][i];
+    }
+
+    ait[0] = y[0];
+    ait[1] = y[2];
+    ait[2] = y[4];
+    ait[3] = y[6];
+
+    aixy[0] = c[15] * (ait[0] + ait[2]);
+    aixy[1] = c[15] * (ait[0] - ait[2]);
+    aixy[2] = s[7] * ait[1] - s[23] * ait[3];
+    aixy[3] = c[7] * ait[1] + c[23] * ait[3];
+
+    ait[0] = aixy[0] + aixy[3];
+    ait[1] = aixy[1] + aixy[2];
+    ait[2] = aixy[1] - aixy[2];
+    ait[3] = aixy[0] - aixy[3];
+
+    yy[4] = s[3] * y[1] - s[27] * y[7];
+    yy[5] = s[19] * y[5] - s[11] * y[3];
+    yy[6] = c[19] * y[5] + c[11] * y[3];
+    yy[7] = c[3] * y[1] + c[27] * y[7];
+
+    y[4] = yy[4] + yy[5];
+    y[5] = yy[4] - yy[5];
+    y[6] = -yy[6] + yy[7];
+    y[7] = yy[6] + yy[7];
+
+    yy[4] = y[4];
+    yy[7] = y[7];
+    yy[5] = c[15] * (-y[5] + y[6]);
+    yy[6] = c[15] * (y[5] + y[6]);
+
+    for (int j = 0; j < 4; j++) {
+      y[j] = ait[j] + yy[7 - j];
+    }
+
+    for (int j = 4; j < 8; j++) {
+      y[j] = ait[7 - j] - yy[j];
+    }
+
+    for (int j = 0; j < B_SIZE; j++) {
+      z[j][i] = y[j];
+    }
+  }
+
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
+      y[j] = z[i][j];
+    }
+
+    ait[0] = y[0];
+    ait[1] = y[2];
+    ait[2] = y[4];
+    ait[3] = y[6];
+
+    aixy[0] = c[15] * (ait[0] + ait[2]);
+    aixy[1] = c[15] * (ait[0] - ait[2]);
+    aixy[2] = s[7] * ait[1] - s[23] * ait[3];
+    aixy[3] = c[7] * ait[1] + c[23] * ait[3];
+
+    ait[0] = aixy[0] + aixy[3];
+    ait[1] = aixy[1] + aixy[2];
+    ait[2] = aixy[1] - aixy[2];
+    ait[3] = aixy[0] - aixy[3];
+
+    yy[4] = s[3] * y[1] - s[27] * y[7];
+    yy[5] = s[19] * y[5] - s[11] * y[3];
+    yy[6] = c[19] * y[5] + c[11] * y[3];
+    yy[7] = c[3] * y[1] + c[27] * y[7];
+
+    y[4] = yy[4] + yy[5];
+    y[5] = yy[4] - yy[5];
+    y[6] = -yy[6] + yy[7];
+    y[7] = yy[6] + yy[7];
+
+    yy[4] = y[4];
+    yy[7] = y[7];
+    yy[5] = c[15] * (-y[5] + y[6]);
+    yy[6] = c[15] * (y[5] + y[6]);
+
+    for (int j = 0; j < 4; j++) {
+      y[j] = ait[j] + yy[7 - j];
+    }
+
+    for (int j = 4; j < 8; j++) {
+      y[j] = ait[7 - j] - yy[j];
+    }
+
+    for (int j = 0; j < B_SIZE; j++) {
+      z[i][j] = y[j] / 4.0;
+    }
+  }
+
+  for (int i = 0; i < B_SIZE; i++) {
+    for (int j = 0; j < B_SIZE; j++) {
       ix[i][j] = nint(z[i][j]);
     }
   }
@@ -202,12 +322,37 @@ int main() {
   FILE *input_file = fopen("lena_raw_512x512.raw", "rb");
   if (input_file == NULL) {
     printf("FILE ERROR\n");
-    return 0;
+    return 1;
   }
 
-  BYTE *image = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  fread(image, sizeof(BYTE), MAX * MAX, input_file);
+  int frame_size = MAX * MAX;
+  BYTE *image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
+  BYTE *transformed_image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
+  BYTE *restored_image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
+
+  size_t n_size = fread(image, sizeof(BYTE), frame_size, input_file);
   fclose(input_file);
+
+  memcpy(transformed_image, image, sizeof(image));
+  for (int i = 0; i < MAX; i += B_SIZE) {
+    for (int j = 0; j < MAX; j += B_SIZE) {
+      BYTE copied[B_SIZE][B_SIZE];
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+        }
+      }
+    }
+  }
+
+  // RMSE값을 구한다.
+  long long int nTmp = 0;
+  double dmse = 0;
+  for (int i = 0; i < frame_size; i++) {
+    nTmp += (image[i] - restored_image[i]) * (image[i] - restored_image[i]);
+  }
+
+  dmse = (double)nTmp / frame_size;
+  printf("MSE 값 : %f\n", dmse);
 
   return 0;
 }
