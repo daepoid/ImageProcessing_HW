@@ -11,6 +11,7 @@
 #include <wingdi.h>
 #define MAX 512
 #define B_SIZE 8
+#define RADIAN 40
 #define nint(x) ((x) < 0. ? (int)((x)-0.5) : (int)((x) + 0.5))
 using namespace std;
 
@@ -63,8 +64,7 @@ void make_bmp(BYTE *output_image, string output_name) {
 
   BITMAPHEADERS bh;
   generate_headers(bh);
-  string PATH = "outputs/" + output_name + "_EdgeDetection(" +
-                to_string(THRESHOLD) + ").bmp";
+  string PATH = "outputs/" + output_name + ".bmp";
   FILE *output_file = fopen(PATH.c_str(), "wb");
 
   fwrite(&bh.hFile, sizeof(BITMAPFILEHEADER), 1, output_file);
@@ -76,20 +76,22 @@ void make_bmp(BYTE *output_image, string output_name) {
   return;
 }
 
-void block_dct(int ix[][B_SIZE]) {
-  static float pi = 3.141592653589793238;
-  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], c[40], s[40], ft[4],
-      fxy[4], yy[B_SIZE], zz;
+void block_dct(BYTE ix[][B_SIZE]) {
+  static double pi = 3.141592653589793238;
+  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
+  double c[RADIAN], s[RADIAN], ft[4], fxy[4], zz;
 
-  for (int i = 0; i < 40; i++) {
-    zz = pi * (float)(i + 1) / 64.0;
+  // cos, sin 값 미리 계산
+  for (int i = 0; i < RADIAN; i++) {
+    zz = pi * (double)(i + 1) / 64.0;
     c[i] = cos(zz);
     s[i] = sin(zz);
   }
 
+  // x에 ix에 저장된 값들을 B_SIZE * B_SIZE 만큼 떼어와 저장한다.
   for (int i = 0; i < B_SIZE; i++) {
     for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (float)ix[i][j];
+      x[i][j] = (double)ix[i][j];
     }
   }
 
@@ -198,20 +200,20 @@ void block_dct(int ix[][B_SIZE]) {
   }
 }
 
-void block_inverse_dct(int ix[][B_SIZE]) {
-  static float pi = 3.141592653589793238;
-  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], c[40], s[40], ait[4],
-      aixy[4], yy[B_SIZE], zz;
+void block_inverse_dct(BYTE ix[][B_SIZE]) {
+  static double pi = 3.141592653589793238;
+  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
+  double c[RADIAN], s[RADIAN], ait[4], aixy[4], zz;
 
-  for (int i = 0; i < 40; i++) {
-    zz = pi * (float)(i + 1) / 64.0;
+  for (int i = 0; i < RADIAN; i++) {
+    zz = pi * (double)(i + 1) / 64.0;
     c[i] = cos(zz);
     s[i] = sin(zz);
   }
 
   for (int i = 0; i < B_SIZE; i++) {
     for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (float)ix[i][j];
+      x[i][j] = (double)ix[i][j];
     }
   }
 
@@ -333,17 +335,40 @@ int main() {
   size_t n_size = fread(image, sizeof(BYTE), frame_size, input_file);
   fclose(input_file);
 
-  memcpy(transformed_image, image, sizeof(image));
   for (int i = 0; i < MAX; i += B_SIZE) {
     for (int j = 0; j < MAX; j += B_SIZE) {
       BYTE copied[B_SIZE][B_SIZE];
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
+          copied[i - a][j - b] = image[MAX * a + b];
+        }
+      }
+      block_dct(copied);
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          transformed_image[MAX * a + b] = copied[i - a][j - b];
         }
       }
     }
   }
 
+  for (int i = 0; i < MAX; i += B_SIZE) {
+    for (int j = 0; j < MAX; j += B_SIZE) {
+      BYTE copied[B_SIZE][B_SIZE];
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          copied[i - a][j - b] = transformed_image[MAX * a + b];
+        }
+      }
+      block_inverse_dct(copied);
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          restored_image[MAX * a + b] = copied[i - a][j - b];
+        }
+      }
+    }
+  }
+  make_bmp(restored_image, "Restored_DCT_Lena");
   // RMSE값을 구한다.
   long long int nTmp = 0;
   double dmse = 0;
