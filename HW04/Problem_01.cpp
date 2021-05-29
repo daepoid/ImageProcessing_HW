@@ -1,3 +1,6 @@
+#include "opencv2/opencv.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/core/types_c.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -9,11 +12,12 @@
 #include <string>
 #include <windows.h>
 #include <wingdi.h>
+#pragma warning(disable:4996)
 #define MAX 512
 #define B_SIZE 8
-#define RADIAN 40
-#define nint(x) ((x) < 0. ? (int)((x)-0.5) : (int)((x) + 0.5))
+#define pi 3.141592653589793238
 using namespace std;
+using namespace cv;
 
 typedef struct headers {
   BITMAPFILEHEADER hFile;
@@ -21,12 +25,12 @@ typedef struct headers {
   RGBQUAD hRGB[256];
 } BITMAPHEADERS;
 
-void generate_headers(BITMAPHEADERS &bh) {
+void generate_headers(BITMAPHEADERS& bh) {
   bh.hFile.bfType = 0x4D42;
   bh.hFile.bfReserved1 = 0;
   bh.hFile.bfReserved2 = 0;
   bh.hFile.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) +
-                       sizeof(RGBQUAD) * 256;
+    sizeof(RGBQUAD) * 256;
   bh.hFile.bfSize = bh.hFile.bfOffBits + MAX * MAX;
 
   bh.hInfo.biSize = 40;
@@ -49,7 +53,7 @@ void generate_headers(BITMAPHEADERS &bh) {
   }
 }
 
-void reverse_raw_data(BYTE *image) {
+void reverse_raw_data(BYTE* image) {
   for (int i = 0; i < MAX; i++) {
     for (int j = 0; j < MAX; j++) {
       if (i < MAX / 2) {
@@ -59,13 +63,13 @@ void reverse_raw_data(BYTE *image) {
   }
 }
 
-void make_bmp(BYTE *output_image, string output_name) {
+void make_bmp(BYTE* output_image, string output_name) {
   reverse_raw_data(output_image);
 
   BITMAPHEADERS bh;
   generate_headers(bh);
   string PATH = "outputs/" + output_name + ".bmp";
-  FILE *output_file = fopen(PATH.c_str(), "wb");
+  FILE* output_file = fopen(PATH.c_str(), "wb");
 
   fwrite(&bh.hFile, sizeof(BITMAPFILEHEADER), 1, output_file);
   fwrite(&bh.hInfo, sizeof(BITMAPINFOHEADER), 1, output_file);
@@ -76,308 +80,136 @@ void make_bmp(BYTE *output_image, string output_name) {
   return;
 }
 
-void block_dct(BYTE ix[][B_SIZE]) {
-  static double pi = 3.141592653589793238;
-  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
-  double c[RADIAN], s[RADIAN], ft[4], fxy[4], zz;
-
-  // cos, sin ê°’ ë¯¸ë¦¬ ê³„ì‚°
-  for (int i = 0; i < RADIAN; i++) {
-    zz = pi * (double)(i + 1) / 64.0;
-    c[i] = cos(zz);
-    s[i] = sin(zz);
-  }
-
-  // xì— ixì— ì €ìž¥ëœ ê°’ë“¤ì„ B_SIZE * B_SIZE ë§Œí¼ ë–¼ì–´ì™€ ì €ìž¥í•œë‹¤.
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (double)ix[i][j];
-    }
-  }
-
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      y[j] = x[i][j];
+void DCT(BYTE* input_image, double* DCT_image) {
+  int matrix[B_SIZE][B_SIZE];
+  for (int s = 0; s < MAX * MAX / (B_SIZE * B_SIZE); s++) {
+    double dct_val, ci, cj;
+    for (int i = 0; i < B_SIZE; i++) {
+      for (int j = 0; j < B_SIZE; j++) {
+        // B_SIZE * B_SIZE Å©±âÀÇ matrix¿¡ °ªÀ» º¹»çÇØ ³Ö´Â´Ù.
+        // B_SIZE * B_SIZE * s´Â MAX * MAX ±âÁØÀÇ ¹è¿­¿¡¼­
+        // ¿øÇÏ´Â °ªÀ» Ã£±â À§ÇÑ À§Ä¡ º¸Á¤°ª
+        matrix[i][j] = input_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
+      }
     }
 
-    for (int j = 0; j < 4; j++) {
-      ft[j] = y[j] + y[7 - j];
-    }
+    for (int i = 0; i < B_SIZE; i++) {
+      for (int j = 0; j < B_SIZE; j++) {
+        double sum = 0;
+        if (i == 0) {
+          ci = 1 / sqrt(2);
+        }
+        else {
+          ci = 1;
+        }
 
-    fxy[0] = ft[0] + ft[3];
-    fxy[1] = ft[1] + ft[2];
-    fxy[2] = ft[1] - ft[2];
-    fxy[3] = ft[0] - ft[3];
+        if (j == 0) {
+          cj = 1 / sqrt(2);
+        }
+        else {
+          cj = 1;
+        }
 
-    ft[0] = c[15] * (fxy[0] + fxy[1]);
-    ft[2] = c[15] * (fxy[0] - fxy[1]);
-    ft[1] = s[7] * fxy[2] + c[7] * fxy[3];
-    ft[3] = -s[23] * fxy[2] + c[23] * fxy[3];
-
-    for (int j = 4; j < 8; j++) {
-      yy[j] = y[7 - j] - y[j];
-    }
-
-    y[4] = yy[4];
-    y[7] = yy[7];
-    y[5] = c[15] * (-yy[5] + yy[6]);
-    y[6] = c[15] * (yy[5] + yy[6]);
-
-    yy[4] = y[4] + y[5];
-    yy[5] = y[4] - y[5];
-    yy[6] = -y[6] + y[7];
-    yy[7] = y[6] + y[7];
-
-    y[0] = ft[0];
-    y[4] = ft[2];
-    y[2] = ft[1];
-    y[6] = ft[3];
-    y[1] = s[3] * yy[4] + c[3] * yy[7];
-    y[5] = s[19] * yy[5] + c[19] * yy[6];
-    y[3] = -s[11] * yy[5] + c[11] * yy[6];
-    y[7] = -s[27] * yy[4] + c[27] * yy[7];
-
-    for (int j = 0; j < B_SIZE; j++) {
-      z[i][j] = y[j];
-    }
-  }
-
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      y[j] = z[j][i];
-    }
-
-    for (int j = 0; j < 4; j++) {
-      ft[j] = y[j] + y[7 - j];
-    }
-
-    fxy[0] = ft[0] + ft[3];
-    fxy[1] = ft[1] + ft[2];
-    fxy[2] = ft[1] - ft[2];
-    fxy[3] = ft[0] - ft[3];
-
-    ft[0] = c[15] * (fxy[0] + fxy[1]);
-    ft[2] = c[15] * (fxy[0] - fxy[1]);
-    ft[1] = s[7] * fxy[2] + c[7] * fxy[3];
-    ft[3] = -s[23] * fxy[2] + c[23] * fxy[3];
-
-    for (int j = 4; j < 8; j++) {
-      yy[j] = y[7 - j] - y[j];
-    }
-
-    y[4] = yy[4];
-    y[7] = yy[7];
-    y[5] = c[15] * (-yy[5] + yy[6]);
-    y[6] = c[15] * (yy[5] + yy[6]);
-
-    yy[4] = y[4] + y[5];
-    yy[5] = y[4] - y[5];
-    yy[6] = -y[6] + y[7];
-    yy[7] = y[6] + y[7];
-
-    y[0] = ft[0];
-    y[4] = ft[2];
-    y[2] = ft[1];
-    y[6] = ft[3];
-    y[1] = s[3] * yy[4] + c[3] * yy[7];
-    y[5] = s[19] * yy[5] + c[19] * yy[6];
-    y[3] = -s[11] * yy[5] + c[11] * yy[6];
-    y[7] = -s[27] * yy[4] + c[27] * yy[7];
-
-    for (int j = 0; j < B_SIZE; j++) {
-      y[j] = y[j] / 4.0;
-    }
-
-    for (int j = 0; j < B_SIZE; j++) {
-      z[j][i] = y[j];
-    }
-  }
-
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      ix[i][j] = nint(z[i][j]);
+        for (int k = 0; k < B_SIZE; k++) {
+          for (int l = 0; l < B_SIZE; l++) {
+            // DCT °ø½Ä °è»ê
+            dct_val = matrix[k][l] * cos((2 * k + 1) * i * pi / (2 * B_SIZE)) *
+              cos((2 * l + 1) * j * pi / (2 * B_SIZE));
+            sum += dct_val;
+          }
+        }
+        DCT_image[j + B_SIZE * i + B_SIZE * B_SIZE * s] =
+          (2 * ci * cj * sum / sqrt(B_SIZE * B_SIZE));
+      }
     }
   }
 }
 
-void block_inverse_dct(BYTE ix[][B_SIZE]) {
-  static double pi = 3.141592653589793238;
-  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
-  double c[RADIAN], s[RADIAN], ait[4], aixy[4], zz;
-
-  for (int i = 0; i < RADIAN; i++) {
-    zz = pi * (double)(i + 1) / 64.0;
-    c[i] = cos(zz);
-    s[i] = sin(zz);
-  }
-
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (double)ix[i][j];
+void IDCT(double* DCT_image, BYTE* output_image) {
+  int matrix[B_SIZE][B_SIZE];
+  for (int s = 0; s < MAX * MAX / (B_SIZE * B_SIZE); s++) {
+    double dct_val, ci, cj;
+    for (int i = 0; i < B_SIZE; i++) {
+      for (int j = 0; j < B_SIZE; j++) {
+        // B_SIZE * B_SIZE Å©±âÀÇ matrix¿¡ °ªÀ» º¹»çÇØ ³Ö´Â´Ù.
+        // B_SIZE * B_SIZE * s´Â MAX * MAX ±âÁØÀÇ ¹è¿­¿¡¼­
+        // ¿øÇÏ´Â °ªÀ» Ã£±â À§ÇÑ À§Ä¡ º¸Á¤°ª
+        matrix[i][j] = DCT_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
+      }
+    }
+    for (int i = 0; i < B_SIZE; i++) {
+      for (int j = 0; j < B_SIZE; j++) {
+        double sum = 0;
+        for (int k = 0; k < B_SIZE; k++) {
+          for (int l = 0; l < B_SIZE; l++) {
+            if (k == 0) {
+              ci = 1 / sqrt(2);
+            }
+            else {
+              ci = 1;
+            }
+            if (l == 0) {
+              cj = 1 / sqrt(2);
+            }
+            else {
+              cj = 1;
+            }
+            dct_val = cj * ci / 4 * matrix[k][l] *
+              cos((2 * i + 1) * k * pi / (2 * B_SIZE)) *
+              cos((2 * j + 1) * l * pi / (2 * B_SIZE));
+            sum += dct_val;
+          }
+        }
+        output_image[j + B_SIZE * i + B_SIZE * B_SIZE * s] = (BYTE)(sum);
+      }
     }
   }
+}
 
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      y[j] = x[j][i];
-    }
-
-    ait[0] = y[0];
-    ait[1] = y[2];
-    ait[2] = y[4];
-    ait[3] = y[6];
-
-    aixy[0] = c[15] * (ait[0] + ait[2]);
-    aixy[1] = c[15] * (ait[0] - ait[2]);
-    aixy[2] = s[7] * ait[1] - s[23] * ait[3];
-    aixy[3] = c[7] * ait[1] + c[23] * ait[3];
-
-    ait[0] = aixy[0] + aixy[3];
-    ait[1] = aixy[1] + aixy[2];
-    ait[2] = aixy[1] - aixy[2];
-    ait[3] = aixy[0] - aixy[3];
-
-    yy[4] = s[3] * y[1] - s[27] * y[7];
-    yy[5] = s[19] * y[5] - s[11] * y[3];
-    yy[6] = c[19] * y[5] + c[11] * y[3];
-    yy[7] = c[3] * y[1] + c[27] * y[7];
-
-    y[4] = yy[4] + yy[5];
-    y[5] = yy[4] - yy[5];
-    y[6] = -yy[6] + yy[7];
-    y[7] = yy[6] + yy[7];
-
-    yy[4] = y[4];
-    yy[7] = y[7];
-    yy[5] = c[15] * (-y[5] + y[6]);
-    yy[6] = c[15] * (y[5] + y[6]);
-
-    for (int j = 0; j < 4; j++) {
-      y[j] = ait[j] + yy[7 - j];
-    }
-
-    for (int j = 4; j < 8; j++) {
-      y[j] = ait[7 - j] - yy[j];
-    }
-
-    for (int j = 0; j < B_SIZE; j++) {
-      z[j][i] = y[j];
-    }
+void plot_frequency_spectrum(double* DCT_image) {
+  double* temp_image = (double*)malloc(sizeof(double) * MAX * MAX);
+  memcpy(temp_image, DCT_image, sizeof(double) * MAX * MAX);
+  double max_val = -1;
+  double min_val = 999;
+  for (int i = 0; i < MAX * MAX; i++) {
+    min_val = min(min_val, temp_image[i]);
+    max_val = max(max_val, temp_image[i]);
   }
-
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      y[j] = z[i][j];
-    }
-
-    ait[0] = y[0];
-    ait[1] = y[2];
-    ait[2] = y[4];
-    ait[3] = y[6];
-
-    aixy[0] = c[15] * (ait[0] + ait[2]);
-    aixy[1] = c[15] * (ait[0] - ait[2]);
-    aixy[2] = s[7] * ait[1] - s[23] * ait[3];
-    aixy[3] = c[7] * ait[1] + c[23] * ait[3];
-
-    ait[0] = aixy[0] + aixy[3];
-    ait[1] = aixy[1] + aixy[2];
-    ait[2] = aixy[1] - aixy[2];
-    ait[3] = aixy[0] - aixy[3];
-
-    yy[4] = s[3] * y[1] - s[27] * y[7];
-    yy[5] = s[19] * y[5] - s[11] * y[3];
-    yy[6] = c[19] * y[5] + c[11] * y[3];
-    yy[7] = c[3] * y[1] + c[27] * y[7];
-
-    y[4] = yy[4] + yy[5];
-    y[5] = yy[4] - yy[5];
-    y[6] = -yy[6] + yy[7];
-    y[7] = yy[6] + yy[7];
-
-    yy[4] = y[4];
-    yy[7] = y[7];
-    yy[5] = c[15] * (-y[5] + y[6]);
-    yy[6] = c[15] * (y[5] + y[6]);
-
-    for (int j = 0; j < 4; j++) {
-      y[j] = ait[j] + yy[7 - j];
-    }
-
-    for (int j = 4; j < 8; j++) {
-      y[j] = ait[7 - j] - yy[j];
-    }
-
-    for (int j = 0; j < B_SIZE; j++) {
-      z[i][j] = y[j] / 4.0;
-    }
-  }
-
-  for (int i = 0; i < B_SIZE; i++) {
-    for (int j = 0; j < B_SIZE; j++) {
-      ix[i][j] = nint(z[i][j]);
-    }
-  }
+  printf("%lf\n%lf\n", min_val, max_val);
 }
 
 int main() {
-  FILE *input_file = fopen("lena_raw_512x512.raw", "rb");
+  FILE* input_file = fopen("lena_raw_512x512.raw", "rb");
   if (input_file == NULL) {
     printf("FILE ERROR\n");
     return 1;
   }
 
   int frame_size = MAX * MAX;
-  BYTE *image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
-  BYTE *transformed_image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
-  BYTE *restored_image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
+  BYTE* image = (BYTE*)malloc(sizeof(BYTE) * frame_size);
+  double* transformed_image = (double*)malloc(sizeof(double) * frame_size);
+  BYTE* restored_image = (BYTE*)malloc(sizeof(BYTE) * frame_size);
 
   size_t n_size = fread(image, sizeof(BYTE), frame_size, input_file);
   fclose(input_file);
-
-  for (int i = 0; i < MAX; i += B_SIZE) {
-    for (int j = 0; j < MAX; j += B_SIZE) {
-      BYTE copied[B_SIZE][B_SIZE];
-      for (int a = i; a < i + B_SIZE; a++) {
-        for (int b = j; b < j + B_SIZE; b++) {
-          copied[i - a][j - b] = image[MAX * a + b];
-        }
-      }
-      block_dct(copied);
-      for (int a = i; a < i + B_SIZE; a++) {
-        for (int b = j; b < j + B_SIZE; b++) {
-          transformed_image[MAX * a + b] = copied[i - a][j - b];
-        }
-      }
-    }
-  }
-
-  for (int i = 0; i < MAX; i += B_SIZE) {
-    for (int j = 0; j < MAX; j += B_SIZE) {
-      BYTE copied[B_SIZE][B_SIZE];
-      for (int a = i; a < i + B_SIZE; a++) {
-        for (int b = j; b < j + B_SIZE; b++) {
-          copied[i - a][j - b] = transformed_image[MAX * a + b];
-        }
-      }
-      block_inverse_dct(copied);
-      for (int a = i; a < i + B_SIZE; a++) {
-        for (int b = j; b < j + B_SIZE; b++) {
-          restored_image[MAX * a + b] = copied[i - a][j - b];
-        }
-      }
-    }
-  }
+  // Perform 8x8 forward DCT
+  DCT(image, transformed_image);
+  // plot the frequency spectrum on the monitor in proper scale for easy observation.
+  plot_frequency_spectrum(transformed_image);
+  // Perform 8x8 inverse DCT
+  IDCT(transformed_image, restored_image);
+  // restore bmp file
   make_bmp(restored_image, "Restored_DCT_Lena");
-  // RMSEê°’ì„ êµ¬í•œë‹¤.
-  long long int nTmp = 0;
-  double dmse = 0;
+
+  // compute MSE
+  long long int lli_temp = 0;
+  double mse = 0;
   for (int i = 0; i < frame_size; i++) {
-    nTmp += (image[i] - restored_image[i]) * (image[i] - restored_image[i]);
+    lli_temp += (image[i] - restored_image[i]) * (image[i] - restored_image[i]);
   }
 
-  dmse = (double)nTmp / frame_size;
-  printf("MSE ê°’ : %f\n", dmse);
+  mse = (double)lli_temp / frame_size;
+  printf("MSE °ª : %f\n", mse);
 
   return 0;
 }
