@@ -419,42 +419,42 @@ int main() {
   size_t n_size = fread(image, sizeof(BYTE), frame_size, input_file);
   fclose(input_file);
 
-  // for (int i = 0; i < MAX; i += B_SIZE) {
-  //   for (int j = 0; j < MAX; j += B_SIZE) {
-  //     int copied[B_SIZE][B_SIZE];
-  //     for (int a = i; a < i + B_SIZE; a++) {
-  //       for (int b = j; b < j + B_SIZE; b++) {
-  //         copied[i - a][j - b] = image[MAX * a + b];
-  //       }
-  //     }
-  //     block_dct(copied);
-  //     for (int a = i; a < i + B_SIZE; a++) {
-  //       for (int b = j; b < j + B_SIZE; b++) {
-  //         transformed_image[MAX * a + b] = copied[i - a][j - b];
-  //       }
-  //     }
-  //   }
-  // }
+  for (int i = 0; i < MAX; i += B_SIZE) {
+    for (int j = 0; j < MAX; j += B_SIZE) {
+      int copied[B_SIZE][B_SIZE];
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          copied[i - a][j - b] = image[MAX * a + b];
+        }
+      }
+      block_dct(copied);
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          transformed_image[MAX * a + b] = copied[i - a][j - b];
+        }
+      }
+    }
+  }
 
-  // for (int i = 0; i < MAX; i += B_SIZE) {
-  //   for (int j = 0; j < MAX; j += B_SIZE) {
-  //     int copied[B_SIZE][B_SIZE];
-  //     for (int a = i; a < i + B_SIZE; a++) {
-  //       for (int b = j; b < j + B_SIZE; b++) {
-  //         copied[i - a][j - b] = transformed_image[MAX * a + b];
-  //       }
-  //     }
-  //     block_inverse_dct(copied);
-  //     for (int a = i; a < i + B_SIZE; a++) {
-  //       for (int b = j; b < j + B_SIZE; b++) {
-  //         restored_image[MAX * a + b] = (BYTE)copied[i - a][j - b];
-  //       }
-  //     }
-  //   }
-  // }
+  for (int i = 0; i < MAX; i += B_SIZE) {
+    for (int j = 0; j < MAX; j += B_SIZE) {
+      int copied[B_SIZE][B_SIZE];
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          copied[i - a][j - b] = transformed_image[MAX * a + b];
+        }
+      }
+      block_inverse_dct(copied);
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          restored_image[MAX * a + b] = (BYTE)copied[i - a][j - b];
+        }
+      }
+    }
+  }
 
-  DCT(image, transformed_image);
-  IDCT(transformed_image, restored_image);
+  // DCT(image, transformed_image);
+  // IDCT(transformed_image, restored_image);
 
   make_bmp(restored_image, "Restored_DCT_Lena");
   // RMSE값을 구한다.

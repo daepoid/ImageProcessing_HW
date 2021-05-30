@@ -1,6 +1,3 @@
-#include "opencv2/core/types_c.h"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/opencv.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -12,12 +9,10 @@
 #include <string>
 #include <windows.h>
 #include <wingdi.h>
-#pragma warning(disable : 4996)
 #define MAX 512
 #define B_SIZE 8
 #define pi 3.141592653589793238
 using namespace std;
-using namespace cv;
 
 typedef struct headers {
   BITMAPFILEHEADER hFile;
@@ -86,9 +81,9 @@ void DCT(BYTE *input_image, double *DCT_image) {
     double dct_val, ci, cj;
     for (int i = 0; i < B_SIZE; i++) {
       for (int j = 0; j < B_SIZE; j++) {
-        // B_SIZE * B_SIZE ũ���� matrix�� ���� ������ �ִ´�.
-        // B_SIZE * B_SIZE * s�� MAX * MAX ������ �迭����
-        // ���ϴ� ���� ã�� ���� ��ġ ������
+        // B_SIZE * B_SIZE 크기의 matrix에 값을 복사해 넣는다.
+        // B_SIZE * B_SIZE * s는 MAX * MAX 기준의 배열에서
+        // 원하는 값을 찾기 위한 위치 보정값
         matrix[i][j] = input_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
       }
     }
@@ -110,7 +105,7 @@ void DCT(BYTE *input_image, double *DCT_image) {
 
         for (int k = 0; k < B_SIZE; k++) {
           for (int l = 0; l < B_SIZE; l++) {
-            // DCT ���� ���
+            // DCT 공식 계산
             dct_val = matrix[k][l] * cos((2 * k + 1) * i * pi / (2 * B_SIZE)) *
                       cos((2 * l + 1) * j * pi / (2 * B_SIZE));
             sum += dct_val;
@@ -129,9 +124,9 @@ void IDCT(double *DCT_image, BYTE *output_image) {
     double dct_val, ci, cj;
     for (int i = 0; i < B_SIZE; i++) {
       for (int j = 0; j < B_SIZE; j++) {
-        // B_SIZE * B_SIZE ũ���� matrix�� ���� ������ �ִ´�.
-        // B_SIZE * B_SIZE * s�� MAX * MAX ������ �迭����
-        // ���ϴ� ���� ã�� ���� ��ġ ������
+        // B_SIZE * B_SIZE 크기의 matrix에 값을 복사해 넣는다.
+        // B_SIZE * B_SIZE * s는 MAX * MAX 기준의 배열에서
+        // 원하는 값을 찾기 위한 위치 보정값
         matrix[i][j] = DCT_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
       }
     }
@@ -162,18 +157,6 @@ void IDCT(double *DCT_image, BYTE *output_image) {
   }
 }
 
-void plot_frequency_spectrum(double *DCT_image) {
-  double *temp_image = (double *)malloc(sizeof(double) * MAX * MAX);
-  memcpy(temp_image, DCT_image, sizeof(double) * MAX * MAX);
-  double max_val = -1;
-  double min_val = 999;
-  for (int i = 0; i < MAX * MAX; i++) {
-    min_val = min(min_val, temp_image[i]);
-    max_val = max(max_val, temp_image[i]);
-  }
-  printf("%lf\n%lf\n", min_val, max_val);
-}
-
 int main() {
   FILE *input_file = fopen("BOAT512.raw", "rb");
   if (input_file == NULL) {
@@ -188,25 +171,21 @@ int main() {
 
   size_t n_size = fread(image, sizeof(BYTE), frame_size, input_file);
   fclose(input_file);
-  // Perform 8x8 forward DCT
+
   DCT(image, transformed_image);
-  // plot the frequency spectrum on the monitor in proper scale for easy
-  // observation.
-  plot_frequency_spectrum(transformed_image);
-  // Perform 8x8 inverse DCT
   IDCT(transformed_image, restored_image);
-  // restore bmp file
+
   make_bmp(restored_image, "Restored_DCT_BOAT");
 
-  // compute MSE
+  // RMSE값을 구한다.
   long long int lli_temp = 0;
-  double mse = 0;
+  double dmse = 0;
   for (int i = 0; i < frame_size; i++) {
     lli_temp += (image[i] - restored_image[i]) * (image[i] - restored_image[i]);
   }
 
-  mse = (double)lli_temp / frame_size;
-  printf("MSE : %f\n", mse);
+  dmse = (double)lli_temp / frame_size;
+  printf("MSE 값 : %f\n", dmse);
 
   return 0;
 }

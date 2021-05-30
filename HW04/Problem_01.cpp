@@ -1,6 +1,6 @@
-#include "opencv2/opencv.hpp"
-#include "opencv2/highgui/highgui.hpp"
 #include "opencv2/core/types_c.h"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/opencv.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -12,7 +12,7 @@
 #include <string>
 #include <windows.h>
 #include <wingdi.h>
-#pragma warning(disable:4996)
+#pragma warning(disable : 4996)
 #define MAX 512
 #define B_SIZE 8
 #define pi 3.141592653589793238
@@ -86,9 +86,9 @@ void DCT(BYTE* input_image, double* DCT_image) {
     double dct_val, ci, cj;
     for (int i = 0; i < B_SIZE; i++) {
       for (int j = 0; j < B_SIZE; j++) {
-        // B_SIZE * B_SIZE Å©±âÀÇ matrix¿¡ °ªÀ» º¹»çÇØ ³Ö´Â´Ù.
-        // B_SIZE * B_SIZE * s´Â MAX * MAX ±âÁØÀÇ ¹è¿­¿¡¼­
-        // ¿øÇÏ´Â °ªÀ» Ã£±â À§ÇÑ À§Ä¡ º¸Á¤°ª
+        // B_SIZE * B_SIZE Å©ï¿½ï¿½ï¿½ï¿½ matrixï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Â´ï¿½.
+        // B_SIZE * B_SIZE * sï¿½ï¿½ MAX * MAX ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½è¿­ï¿½ï¿½ï¿½ï¿½
+        // ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         matrix[i][j] = input_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
       }
     }
@@ -112,7 +112,7 @@ void DCT(BYTE* input_image, double* DCT_image) {
 
         for (int k = 0; k < B_SIZE; k++) {
           for (int l = 0; l < B_SIZE; l++) {
-            // DCT °ø½Ä °è»ê
+            // DCT ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
             dct_val = matrix[k][l] * cos((2 * k + 1) * i * pi / (2 * B_SIZE)) *
               cos((2 * l + 1) * j * pi / (2 * B_SIZE));
             sum += dct_val;
@@ -131,9 +131,9 @@ void IDCT(double* DCT_image, BYTE* output_image) {
     double dct_val, ci, cj;
     for (int i = 0; i < B_SIZE; i++) {
       for (int j = 0; j < B_SIZE; j++) {
-        // B_SIZE * B_SIZE Å©±âÀÇ matrix¿¡ °ªÀ» º¹»çÇØ ³Ö´Â´Ù.
-        // B_SIZE * B_SIZE * s´Â MAX * MAX ±âÁØÀÇ ¹è¿­¿¡¼­
-        // ¿øÇÏ´Â °ªÀ» Ã£±â À§ÇÑ À§Ä¡ º¸Á¤°ª
+        // B_SIZE * B_SIZE Å©ï¿½ï¿½ï¿½ï¿½ matrixï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´Â´ï¿½.
+        // B_SIZE * B_SIZE * sï¿½ï¿½ MAX * MAX ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½è¿­ï¿½ï¿½ï¿½ï¿½
+        // ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ Ã£ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         matrix[i][j] = DCT_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
       }
     }
@@ -169,6 +169,14 @@ void IDCT(double* DCT_image, BYTE* output_image) {
 void plot_frequency_spectrum(double* DCT_image) {
   double* temp_image = (double*)malloc(sizeof(double) * MAX * MAX);
   memcpy(temp_image, DCT_image, sizeof(double) * MAX * MAX);
+
+  MatND hist;
+  const int* channel_numbers = { 0 };
+  float channel_range[] = { 0.0, 255.0 };
+  const float* channel_ranges = channel_range;
+  int number_bins = 255;
+
+
   double max_val = -1;
   double min_val = 999;
   for (int i = 0; i < MAX * MAX; i++) {
@@ -194,7 +202,8 @@ int main() {
   fclose(input_file);
   // Perform 8x8 forward DCT
   DCT(image, transformed_image);
-  // plot the frequency spectrum on the monitor in proper scale for easy observation.
+  // plot the frequency spectrum on the monitor in proper scale for easy
+  // observation.
   plot_frequency_spectrum(transformed_image);
   // Perform 8x8 inverse DCT
   IDCT(transformed_image, restored_image);
@@ -209,7 +218,7 @@ int main() {
   }
 
   mse = (double)lli_temp / frame_size;
-  printf("MSE °ª : %f\n", mse);
+  printf("MSE ï¿½ï¿½ : %f\n", mse);
 
   return 0;
 }
