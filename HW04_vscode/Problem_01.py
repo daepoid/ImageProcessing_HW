@@ -52,27 +52,31 @@ def nint(x):
 
 def DCT(ix):
     global B_SIZE
-    x = [[0 for row in range(B_SIZE)] for col in range(B_SIZE)]
-    z = [[0 for row in range(B_SIZE)] for col in range(B_SIZE)]
-    y = [0 for val in range(B_SIZE)]
-    yy = [0 for val in range(B_SIZE)]
-    c = [0 for val in range(40)]
-    s = [0 for val in range(40)]
-    ft = [0, 0, 0, 0]
-    fxy = [0, 0, 0, 0]
-    zz = 0
+    x = [[0.0 for row in range(B_SIZE)] for col in range(B_SIZE)]
+    z = [[0.0 for row in range(B_SIZE)] for col in range(B_SIZE)]
+    y = [0.0 for val in range(B_SIZE)]
+    yy = [0.0 for val in range(B_SIZE)]
+    c = [0.0 for val in range(40)]
+    s = [0.0 for val in range(40)]
+    ft = [0.0, 0.0, 0.0, 0.0]
+    fxy = [0.0, 0.0, 0.0, 0.0]
+    zz = 0.0
 
     for i in range(40):
         zz = math.pi * float(i + 1) / 64.0
         c[i] = math.cos(zz)
         s[i] = math.sin(zz)
 
-    for ii in range(B_SIZE):
-        for jj in range(B_SIZE):
-            y[jj] = z[jj][ii]
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            x[i][j] = float(ix[i][j])
 
-        for jj in range(4):
-            ft[jj] = y[jj] + y[7 - jj]
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            y[j] = x[i][j]
+
+        for j in range(4):
+            ft[j] = y[j] + y[7 - j]
 
         fxy[0] = ft[0] + ft[3]
         fxy[1] = ft[1] + ft[2]
@@ -84,8 +88,8 @@ def DCT(ix):
         ft[1] = s[7] * fxy[2] + c[7] * fxy[3]
         ft[3] = -s[23] * fxy[2] + c[23] * fxy[3]
 
-        for jj in range(4, 8):
-            y[jj] = y[7 - jj] - y[jj]
+        for j in range(4, 8):
+            yy[j] = y[7-j] - y[j]
 
         y[4] = yy[4]
         y[7] = yy[7]
@@ -106,15 +110,15 @@ def DCT(ix):
         y[3] = -s[11] * yy[5] + c[11] * yy[6]
         y[7] = -s[27] * yy[4] + c[27] * yy[7]
 
-        for jj in range(B_SIZE):
-            z[ii][jj] = y[jj]
+        for j in range(B_SIZE):
+            z[i][j] = y[j]
 
-    for ii in range(B_SIZE):
-        for jj in range(B_SIZE):
-            y[jj] = z[jj][ii]
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            y[j] = z[j][i]
 
-        for jj in range(4):
-            ft[jj] = y[jj] + y[7 - jj]
+        for j in range(4):
+            ft[j] = y[j] + y[7 - j]
 
         fxy[0] = ft[0] + ft[3]
         fxy[1] = ft[1] + ft[2]
@@ -126,8 +130,8 @@ def DCT(ix):
         ft[1] = s[7] * fxy[2] + c[7] * fxy[3]
         ft[3] = -s[23] * fxy[2] + c[23] * fxy[3]
 
-        for jj in range(4, 8):
-            yy[jj] = y[7 - jj] - y[jj]
+        for j in range(4, 8):
+            yy[j] = y[7 - j] - y[j]
 
         y[4] = yy[4]
         y[7] = yy[7]
@@ -145,88 +149,44 @@ def DCT(ix):
         y[6] = ft[3]
         y[1] = s[3] * yy[4] + c[3] * yy[7]
         y[5] = s[19] * yy[5] + c[19] * yy[6]
-
         y[3] = -s[11] * yy[5] + c[11] * yy[6]
         y[7] = -s[27] * yy[4] + c[27] * yy[7]
 
-        for jj in range(B_SIZE):
-            y[jj] = y[jj] / 4.0
+        for j in range(B_SIZE):
+            y[j] = y[j] / 4.0
 
-        for jj in range(B_SIZE):
-            z[jj][ii] = y[jj]
+        for j in range(B_SIZE):
+            z[j][i] = y[j]
 
-    for ii in range(B_SIZE):
-        for jj in range(B_SIZE):
-            ix[ii][jj] = nint(z[ii][jj])
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            ix[i][j] = nint(z[i][j])
 
 
 def IDCT(ix):
     global B_SIZE
-    x = [[0 for row in range(B_SIZE)] for col in range(B_SIZE)]
-    z = [[0 for row in range(B_SIZE)] for col in range(B_SIZE)]
-    y = [0 for val in range(B_SIZE)]
-    yy = [0 for val in range(B_SIZE)]
-    c = [0 for val in range(40)]
-    s = [0 for val in range(40)]
-    ait = [0, 0, 0, 0]
-    aixy = [0, 0, 0, 0]
-    zz = 0
+    x = [[0.0 for row in range(B_SIZE)] for col in range(B_SIZE)]
+    z = [[0.0 for row in range(B_SIZE)] for col in range(B_SIZE)]
+    y = [0.0 for val in range(B_SIZE)]
+    yy = [0.0 for val in range(B_SIZE)]
+    c = [0.0 for val in range(40)]
+    s = [0.0 for val in range(40)]
+    ait = [0.0, 0.0, 0.0, 0.0]
+    aixy = [0.0, 0.0, 0.0, 0.0]
+    zz = 0.0
 
     for i in range(40):
         zz = math.pi * float(i + 1) / 64.0
         c[i] = math.cos(zz)
         s[i] = math.sin(zz)
 
-    for ii in range(B_SIZE):
-        for jj in range(B_SIZE):
-            x[ii][jj] = float(ix[ii][jj])
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            x[i][j] = float(ix[i][j])
 
-    for ii in range(B_SIZE):
-        for jj in range(B_SIZE):
-            y[jj] = x[jj][ii]
-
-        ait[0] = y[0]
-        ait[1] = y[2]
-        ait[2] = y[4]
-        ait[3] = y[6]
-
-        aixy[0] = c[15] * (ait[0] + ait[2])
-        aixy[1] = c[15] * (ait[0] - ait[2])
-        aixy[2] = s[7] * ait[1] - s[23] * ait[3]
-        aixy[3] = c[7] * ait[1] + c[23] * ait[3]
-
-        ait[0] = aixy[0] + aixy[3]
-        ait[1] = aixy[1] + aixy[2]
-        ait[2] = aixy[1] - aixy[2]
-        ait[3] = aixy[0] - aixy[3]
-
-        yy[4] = s[3] * y[1] - s[27] * y[7]
-        yy[5] = s[19] * y[5] - s[11] * y[3]
-        yy[6] = c[19] * y[5] + c[11] * y[3]
-        yy[7] = c[3] * y[1] + c[27] * y[7]
-
-        y[4] = yy[4] + yy[5]
-        y[5] = yy[4] - yy[5]
-        y[6] = -yy[6] + yy[7]
-        y[7] = yy[6] + yy[7]
-
-        yy[4] = y[4]
-        yy[7] = y[7]
-        yy[5] = c[15] * (-y[5] + y[6])
-        yy[6] = c[15] * (y[5] + y[6])
-
-        for jj in range(4):
-            y[jj] = ait[jj] + yy[7 - jj]
-
-        for jj in range(4, 8):
-            y[jj] = ait[7 - jj] - yy[jj]
-
-        for jj in range(B_SIZE):
-            z[jj][ii] = y[jj]
-
-    for ii in range(B_SIZE):
-        for jj in range(B_SIZE):
-            y[jj] = z[ii][jj]
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            y[j] = x[j][i]
 
         ait[0] = y[0]
         ait[1] = y[2]
@@ -258,18 +218,61 @@ def IDCT(ix):
         yy[5] = c[15] * (-y[5] + y[6])
         yy[6] = c[15] * (y[5] + y[6])
 
-        for jj in range(4):
-            y[jj] = ait[jj] + yy[7 - jj]
+        for j in range(4):
+            y[j] = ait[j] + yy[7 - j]
 
-        for jj in range(4, 8):
-            y[jj] = ait[7 - jj] - yy[jj]
+        for j in range(4, 8):
+            y[j] = ait[7 - j] - yy[j]
 
-        for jj in range(B_SIZE):
-            z[ii][jj] = y[jj] / 4.0
+        for j in range(B_SIZE):
+            z[j][i] = y[j]
 
-    for ii in range(B_SIZE):
-        for jj in range(B_SIZE):
-            ix[ii][jj] = nint(z[ii][jj])
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            y[j] = z[i][j]
+
+        ait[0] = y[0]
+        ait[1] = y[2]
+        ait[2] = y[4]
+        ait[3] = y[6]
+
+        aixy[0] = c[15] * (ait[0] + ait[2])
+        aixy[1] = c[15] * (ait[0] - ait[2])
+        aixy[2] = s[7] * ait[1] - s[23] * ait[3]
+        aixy[3] = c[7] * ait[1] + c[23] * ait[3]
+
+        ait[0] = aixy[0] + aixy[3]
+        ait[1] = aixy[1] + aixy[2]
+        ait[2] = aixy[1] - aixy[2]
+        ait[3] = aixy[0] - aixy[3]
+
+        yy[4] = s[3] * y[1] - s[27] * y[7]
+        yy[5] = s[19] * y[5] - s[11] * y[3]
+        yy[6] = c[19] * y[5] + c[11] * y[3]
+        yy[7] = c[3] * y[1] + c[27] * y[7]
+
+        y[4] = yy[4] + yy[5]
+        y[5] = yy[4] - yy[5]
+        y[6] = -yy[6] + yy[7]
+        y[7] = yy[6] + yy[7]
+
+        yy[4] = y[4]
+        yy[7] = y[7]
+        yy[5] = c[15] * (-y[5] + y[6])
+        yy[6] = c[15] * (y[5] + y[6])
+
+        for j in range(4):
+            y[j] = ait[j] + yy[7 - j]
+
+        for j in range(4, 8):
+            y[j] = ait[7 - j] - yy[j]
+
+        for j in range(B_SIZE):
+            z[i][j] = y[j] / 4.0
+
+    for i in range(B_SIZE):
+        for j in range(B_SIZE):
+            ix[i][j] = nint(z[i][j])
 
 
 def MSE(original_image, restored_image):
@@ -293,7 +296,6 @@ def main():
     restored_image = [0 for val in range(MATRIX_MAX * MATRIX_MAX)]
 
     print("DCT start")
-
     for i in range(int(MATRIX_MAX / B_SIZE)):
         for j in range(int(MATRIX_MAX / B_SIZE)):
             copied = [[0 for row in range(B_SIZE)] for col in range(B_SIZE)]
@@ -309,7 +311,9 @@ def main():
                 for b in range(j * B_SIZE, j * B_SIZE + B_SIZE):
                     DCT_image[MATRIX_MAX * a + b] = copied[a -
                                                            (i * B_SIZE)][b - (j * B_SIZE)]
-
+    print("DCT clear")
+    frequency_data = DCT_image.copy()
+    print("IDCT start")
     for i in range(int(MATRIX_MAX / B_SIZE)):
         for j in range(int(MATRIX_MAX / B_SIZE)):
             copied = [[0 for row in range(B_SIZE)] for col in range(B_SIZE)]
@@ -325,15 +329,12 @@ def main():
                 for b in range(j * B_SIZE, j * B_SIZE + B_SIZE):
                     restored_image[MATRIX_MAX * a +
                                    b] = copied[a - (i * B_SIZE)][b - (j * B_SIZE)]
-
-    # DCT_image = DCT(raw_image)
-    print("DCT clear")
-    print("IDCT start")
-    # restored_image = IDCT(DCT_image)
     print("IDCT clear")
+
     mse = MSE(raw_image, restored_image)
     print(mse)
-
+    # 이 부분에서 그래프를 그려서 주파수를 확인해야한다.
+    # frequency_data 를 이용
     create_bmp_img(BMPHEADERS, restored_image, new_img_path)
 
 
