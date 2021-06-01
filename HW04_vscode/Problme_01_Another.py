@@ -11,15 +11,12 @@ B_SIZE = 8
 def draw_graph(hist_data, img_file, output_path, mode=True):
     plt.figure(figsize=(16, 9))
     plt.subplot(1, 2, 1)
-    if mode:
-        output_path += '_bar.png'
-        count_num_list = count_number(hist_data)
-        x = np.arange(256)
-        y = np.array(count_num_list)
-        plt.bar(x, y)
-    else:
-        output_path += '_hist.png'
-        plt.hist(hist_data, bins=222)
+
+    output_path += '_bar.png'
+    count_num_list = count_number(hist_data)
+    x = np.arange(256)
+    y = np.array(count_num_list)
+    plt.bar(x, y)
 
     plt.subplot(1, 2, 2)
     image = img.imread(img_file)
@@ -62,17 +59,13 @@ def DCT(input_image):
         for i in range(B_SIZE):
             for j in range(B_SIZE):
                 sum = 0.0
-                ci = 0
-                cj = 0
+                ci = 1
+                cj = 1
                 if i == 0:
                     ci = 1 / math.sqrt(2)
-                else:
-                    ci = 1
 
                 if j == 0:
                     cj = 1 / math.sqrt(2)
-                else:
-                    cj = 1
 
                 for k in range(B_SIZE):
                     for l in range(B_SIZE):
@@ -101,8 +94,8 @@ def IDCT(DCT_image):
         for i in range(B_SIZE):
             for j in range(B_SIZE):
                 sum = 0.0
-                ci = 0
-                cj = 0
+                ci = 1
+                cj = 1
                 for k in range(B_SIZE):
                     for l in range(B_SIZE):
                         if k == 0:

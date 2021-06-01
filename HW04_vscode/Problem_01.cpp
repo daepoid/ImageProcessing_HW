@@ -77,13 +77,13 @@ void make_bmp(BYTE *output_image, string output_name) {
   return;
 }
 
-void block_dct(int ix[][B_SIZE]) {
-  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
-  double c[RADIAN], s[RADIAN], ft[4], fxy[4], zz;
+void LUT_based_DCT(int ix[][B_SIZE]) {
+  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
+  float c[RADIAN], s[RADIAN], ft[4], fxy[4], zz;
 
   // cos, sin 값 미리 계산
   for (int i = 0; i < RADIAN; i++) {
-    zz = pi * (double)(i + 1) / 64.0;
+    zz = pi * (float)(i + 1) / 64.0;
     c[i] = cos(zz);
     s[i] = sin(zz);
   }
@@ -91,7 +91,7 @@ void block_dct(int ix[][B_SIZE]) {
   // x에 ix에 저장된 값들을 B_SIZE * B_SIZE 만큼 떼어와 저장한다.
   for (int i = 0; i < B_SIZE; i++) {
     for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (double)ix[i][j];
+      x[i][j] = (float)ix[i][j];
     }
   }
 
@@ -200,19 +200,19 @@ void block_dct(int ix[][B_SIZE]) {
   }
 }
 
-void block_inverse_dct(int ix[][B_SIZE]) {
-  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
-  double c[RADIAN], s[RADIAN], ait[4], aixy[4], zz;
+void LUT_based_IDCT(int ix[][B_SIZE]) {
+  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
+  float c[RADIAN], s[RADIAN], ait[4], aixy[4], zz;
 
   for (int i = 0; i < RADIAN; i++) {
-    zz = pi * (double)(i + 1) / 64.0;
+    zz = pi * (float)(i + 1) / 64.0;
     c[i] = cos(zz);
     s[i] = sin(zz);
   }
 
   for (int i = 0; i < B_SIZE; i++) {
     for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (double)ix[i][j];
+      x[i][j] = (float)ix[i][j];
     }
   }
 
@@ -314,91 +314,8 @@ void block_inverse_dct(int ix[][B_SIZE]) {
 
   for (int i = 0; i < B_SIZE; i++) {
     for (int j = 0; j < B_SIZE; j++) {
-      // int temp = ceil(z[i][j]);
-      // ix[i][j] = temp < 0 ? 0 : temp > 255 ? 255 : temp;
+      // ix[i][j] = ceil(z[i][j]);
       ix[i][j] = nint(z[i][j]);
-    }
-  }
-}
-
-void DCT(BYTE *input_image, double *DCT_image) {
-  int matrix[B_SIZE][B_SIZE];
-  for (int s = 0; s < MAX * MAX / (B_SIZE * B_SIZE); s++) {
-    double dct_val, ci, cj;
-    for (int i = 0; i < B_SIZE; i++) {
-      for (int j = 0; j < B_SIZE; j++) {
-        // B_SIZE * B_SIZE 크기의 matrix에 값을 복사해 넣는다.
-        // B_SIZE * B_SIZE * s는 MAX * MAX 기준의 배열에서
-        // 원하는 값을 찾기 위한 위치 보정값
-        matrix[i][j] = input_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
-      }
-    }
-
-    for (int i = 0; i < B_SIZE; i++) {
-      for (int j = 0; j < B_SIZE; j++) {
-        double sum = 0;
-        if (i == 0) {
-          ci = 1 / sqrt(2);
-        } else {
-          ci = 1;
-        }
-
-        if (j == 0) {
-          cj = 1 / sqrt(2);
-        } else {
-          cj = 1;
-        }
-
-        for (int k = 0; k < B_SIZE; k++) {
-          for (int l = 0; l < B_SIZE; l++) {
-            // DCT 공식 계산
-            dct_val = matrix[k][l] * cos((2 * k + 1) * i * pi / (2 * B_SIZE)) *
-                      cos((2 * l + 1) * j * pi / (2 * B_SIZE));
-            sum += dct_val;
-          }
-        }
-        DCT_image[j + B_SIZE * i + B_SIZE * B_SIZE * s] =
-            (2 * ci * cj * sum / sqrt(B_SIZE * B_SIZE));
-      }
-    }
-  }
-}
-
-void IDCT(double *DCT_image, BYTE *output_image) {
-  int matrix[B_SIZE][B_SIZE];
-  for (int s = 0; s < MAX * MAX / (B_SIZE * B_SIZE); s++) {
-    double dct_val, ci, cj;
-    for (int i = 0; i < B_SIZE; i++) {
-      for (int j = 0; j < B_SIZE; j++) {
-        // B_SIZE * B_SIZE 크기의 matrix에 값을 복사해 넣는다.
-        // B_SIZE * B_SIZE * s는 MAX * MAX 기준의 배열에서
-        // 원하는 값을 찾기 위한 위치 보정값
-        matrix[i][j] = DCT_image[j + B_SIZE * i + B_SIZE * B_SIZE * s];
-      }
-    }
-    for (int i = 0; i < B_SIZE; i++) {
-      for (int j = 0; j < B_SIZE; j++) {
-        double sum = 0;
-        for (int k = 0; k < B_SIZE; k++) {
-          for (int l = 0; l < B_SIZE; l++) {
-            if (k == 0) {
-              ci = 1 / sqrt(2);
-            } else {
-              ci = 1;
-            }
-            if (l == 0) {
-              cj = 1 / sqrt(2);
-            } else {
-              cj = 1;
-            }
-            dct_val = cj * ci / 4 * matrix[k][l] *
-                      cos((2 * i + 1) * k * pi / (2 * B_SIZE)) *
-                      cos((2 * j + 1) * l * pi / (2 * B_SIZE));
-            sum += dct_val;
-          }
-        }
-        output_image[j + B_SIZE * i + B_SIZE * B_SIZE * s] = (BYTE)(sum);
-      }
     }
   }
 }
@@ -413,7 +330,7 @@ int main() {
   int frame_size = MAX * MAX;
   BYTE *image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
   // int *transformed_image = (int *)malloc(sizeof(int) * frame_size);
-  double *transformed_image = (double *)malloc(sizeof(double) * frame_size);
+  float *transformed_image = (float *)malloc(sizeof(float) * frame_size);
   BYTE *restored_image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
 
   size_t n_size = fread(image, sizeof(BYTE), frame_size, input_file);
@@ -427,7 +344,7 @@ int main() {
           copied[i - a][j - b] = image[MAX * a + b];
         }
       }
-      block_dct(copied);
+      LUT_based_DCT(copied);
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
           transformed_image[MAX * a + b] = copied[i - a][j - b];
@@ -444,7 +361,7 @@ int main() {
           copied[i - a][j - b] = transformed_image[MAX * a + b];
         }
       }
-      block_inverse_dct(copied);
+      LUT_based_IDCT(copied);
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
           restored_image[MAX * a + b] = (BYTE)copied[i - a][j - b];

@@ -173,8 +173,16 @@ int main() {
   fclose(input_file);
 
   DCT(image, transformed_image);
-  IDCT(transformed_image, restored_image);
 
+  BYTE *DCT_image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
+  for (int i = 0; i < MAX; i++) {
+    for (int j = 0; j < MAX; j++) {
+      DCT_image[i * MAX + j] = (int)transformed_image[i * MAX + j];
+    }
+  }
+  make_bmp(DCT_image, "Restored_transformed_Lena");
+
+  IDCT(transformed_image, restored_image);
   make_bmp(restored_image, "Restored_DCT_Lena");
 
   // RMSE값을 구한다.
