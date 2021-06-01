@@ -341,13 +341,13 @@ int main() {
       int copied[B_SIZE][B_SIZE];
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
-          copied[i - a][j - b] = image[MAX * a + b];
+          copied[a - i][b - j] = image[MAX * a + b];
         }
       }
       LUT_based_DCT(copied);
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
-          transformed_image[MAX * a + b] = copied[i - a][j - b];
+          transformed_image[MAX * a + b] = copied[a - i][b - j];
         }
       }
     }
@@ -358,13 +358,13 @@ int main() {
       int copied[B_SIZE][B_SIZE];
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
-          copied[i - a][j - b] = transformed_image[MAX * a + b];
+          copied[a - i][b - j] = transformed_image[MAX * a + b];
         }
       }
       LUT_based_IDCT(copied);
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
-          restored_image[MAX * a + b] = (BYTE)copied[i - a][j - b];
+          restored_image[MAX * a + b] = (BYTE)copied[a - i][b - j];
         }
       }
     }
