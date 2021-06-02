@@ -8,21 +8,11 @@ MATRIX_MAX = 512
 B_SIZE = 8
 
 
-def draw_graph(hist_data, img_file, output_path, mode=True):
+def draw_graph(graph_data):
     plt.figure(figsize=(16, 9))
-    plt.subplot(1, 2, 1)
-
-    output_path += '_bar.png'
-    count_num_list = count_number(hist_data)
-    x = np.arange(256)
-    y = np.array(count_num_list)
-    plt.bar(x, y)
-
-    plt.subplot(1, 2, 2)
-    image = img.imread(img_file)
-    plt.imshow(image, cmap='gray')
-    plt.savefig(output_path, dpi=600)
-    plt.show()
+    x = np.arange(MATRIX_MAX * MATRIX_MAX)
+    y = np.array(graph_data)
+    plt.plot(x, y)
 
 
 def read_bmp_img(filepath):
@@ -275,19 +265,9 @@ def IDCT(ix):
             ix[i][j] = nint(z[i][j])
 
 
-def MSE(original_image, restored_image):
-    global MATRIX_MAX
-    temp = 0.0
-
-    for i in range(MATRIX_MAX * MATRIX_MAX):
-        temp += (original_image[i] - restored_image[i])**2
-
-    return temp / (MATRIX_MAX * MATRIX_MAX)
-
-
 def main():
     input_file = 'lena_bmp_512x512_new.bmp'
-    output_graph_path = 'outputs/problem_01_a'
+    output_graph_path = 'outputs/problem_01_frequency'
     new_img_path = 'outputs/Restored_DCT_lena_py.bmp'
 
     BMPHEADERS, raw_image = read_bmp_img(input_file)
@@ -331,10 +311,25 @@ def main():
                                    b] = copied[a - (i * B_SIZE)][b - (j * B_SIZE)]
     print("IDCT clear")
 
-    mse = MSE(raw_image, restored_image)
+    temp = 0.0
+    for i in range(MATRIX_MAX * MATRIX_MAX):
+        temp += (raw_image[i] - restored_image[i]) * \
+            (raw_image[i] - restored_image[i])
+
+    mse = temp / (MATRIX_MAX * MATRIX_MAX)
     print(mse)
     # 이 부분에서 그래프를 그려서 주파수를 확인해야한다.
     # frequency_data 를 이용
+    print("Draw Graph Start")
+
+    x = np.arange(MATRIX_MAX * MATRIX_MAX / B_SIZE)
+    y = np.array(frequency_data)
+    y = y[0: (MATRIX_MAX * int(MATRIX_MAX / B_SIZE))].copy()
+    plt.plot(x, y, '-')
+    plt.show()
+
+    # draw_graph(frequency_data)
+    print("Draw Graph Clear")
     create_bmp_img(BMPHEADERS, restored_image, new_img_path)
 
 

@@ -77,13 +77,13 @@ void make_bmp(BYTE *output_image, string output_name) {
   return;
 }
 
-void LUT_based_DCT(int ix[][B_SIZE]) {
-  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
-  float c[RADIAN], s[RADIAN], ft[4], fxy[4], zz;
+void LUT_based_DCT(double ix[][B_SIZE]) {
+  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
+  double c[RADIAN], s[RADIAN], ft[4], fxy[4], zz;
 
   // cos, sin 값 미리 계산
   for (int i = 0; i < RADIAN; i++) {
-    zz = pi * (float)(i + 1) / 64.0;
+    zz = pi * (double)(i + 1) / 64.0;
     c[i] = cos(zz);
     s[i] = sin(zz);
   }
@@ -91,7 +91,7 @@ void LUT_based_DCT(int ix[][B_SIZE]) {
   // x에 ix에 저장된 값들을 B_SIZE * B_SIZE 만큼 떼어와 저장한다.
   for (int i = 0; i < B_SIZE; i++) {
     for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (float)ix[i][j];
+      x[i][j] = (double)ix[i][j];
     }
   }
 
@@ -200,19 +200,19 @@ void LUT_based_DCT(int ix[][B_SIZE]) {
   }
 }
 
-void LUT_based_IDCT(int ix[][B_SIZE]) {
-  float x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
-  float c[RADIAN], s[RADIAN], ait[4], aixy[4], zz;
+void LUT_based_IDCT(double ix[][B_SIZE]) {
+  double x[B_SIZE][B_SIZE], z[B_SIZE][B_SIZE], y[B_SIZE], yy[B_SIZE];
+  double c[RADIAN], s[RADIAN], ait[4], aixy[4], zz;
 
   for (int i = 0; i < RADIAN; i++) {
-    zz = pi * (float)(i + 1) / 64.0;
+    zz = pi * (double)(i + 1) / 64.0;
     c[i] = cos(zz);
     s[i] = sin(zz);
   }
 
   for (int i = 0; i < B_SIZE; i++) {
     for (int j = 0; j < B_SIZE; j++) {
-      x[i][j] = (float)ix[i][j];
+      x[i][j] = (double)ix[i][j];
     }
   }
 
@@ -327,18 +327,17 @@ int main() {
     return 1;
   }
 
-  int frame_size = MAX * MAX;
-  BYTE *image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
-  // int *transformed_image = (int *)malloc(sizeof(int) * frame_size);
-  float *transformed_image = (float *)malloc(sizeof(float) * frame_size);
-  BYTE *restored_image = (BYTE *)malloc(sizeof(BYTE) * frame_size);
+  BYTE *image = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
+  // int *transformed_image = (int *)malloc(sizeof(int) * MAX * MAX);
+  double *transformed_image = (double *)malloc(sizeof(double) * MAX * MAX);
+  BYTE *restored_image = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
 
-  size_t n_size = fread(image, sizeof(BYTE), frame_size, input_file);
+  size_t n_size = fread(image, sizeof(BYTE), MAX * MAX, input_file);
   fclose(input_file);
 
   for (int i = 0; i < MAX; i += B_SIZE) {
     for (int j = 0; j < MAX; j += B_SIZE) {
-      int copied[B_SIZE][B_SIZE];
+      double copied[B_SIZE][B_SIZE];
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
           copied[a - i][b - j] = image[MAX * a + b];
@@ -355,7 +354,7 @@ int main() {
 
   for (int i = 0; i < MAX; i += B_SIZE) {
     for (int j = 0; j < MAX; j += B_SIZE) {
-      int copied[B_SIZE][B_SIZE];
+      double copied[B_SIZE][B_SIZE];
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
           copied[a - i][b - j] = transformed_image[MAX * a + b];
@@ -364,25 +363,22 @@ int main() {
       LUT_based_IDCT(copied);
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
-          restored_image[MAX * a + b] = (BYTE)copied[a - i][b - j];
+          restored_image[MAX * a + b] = ceil(copied[a - i][b - j]);
         }
       }
     }
   }
 
-  // DCT(image, transformed_image);
-  // IDCT(transformed_image, restored_image);
-
-  make_bmp(restored_image, "Restored_DCT_Lena");
-  // RMSE값을 구한다.
+  make_bmp(restored_image, "Restored_DCT_Lena_CPP");
+  // MSE값을 구한다.
   long long int nTmp = 0;
   double dmse = 0;
-  for (int i = 0; i < frame_size; i++) {
+  for (int i = 0; i < MAX * MAX; i++) {
     nTmp += (image[i] - restored_image[i]) * (image[i] - restored_image[i]);
   }
 
-  dmse = (double)nTmp / frame_size;
-  printf("MSE 값 : %f\n", dmse);
+  dmse = (double)nTmp / (MAX * MAX);
+  printf("MSE 값 : %lf\n", dmse);
 
   return 0;
 }
