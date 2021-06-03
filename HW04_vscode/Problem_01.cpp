@@ -328,8 +328,8 @@ int main() {
   }
 
   BYTE *image = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
-  // int *transformed_image = (int *)malloc(sizeof(int) * MAX * MAX);
   double *transformed_image = (double *)malloc(sizeof(double) * MAX * MAX);
+  BYTE *DCT_image = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
   BYTE *restored_image = (BYTE *)malloc(sizeof(BYTE) * MAX * MAX);
 
   size_t n_size = fread(image, sizeof(BYTE), MAX * MAX, input_file);
@@ -344,9 +344,26 @@ int main() {
         }
       }
       LUT_based_DCT(copied);
+      double max_val = -2048.0;
+      double min_val = 2048.0;
       for (int a = i; a < i + B_SIZE; a++) {
         for (int b = j; b < j + B_SIZE; b++) {
           transformed_image[MAX * a + b] = copied[a - i][b - j];
+          max_val = max(max_val, copied[a - i][b - j]);
+          min_val = min(min_val, copied[a - i][b - j]);
+        }
+      }
+
+      for (int a = i; a < i + B_SIZE; a++) {
+        for (int b = j; b < j + B_SIZE; b++) {
+          double temp = (copied[a - i][b - j] - min_val) * 255;
+          temp /= (max_val - min_val);
+          if (temp > 255) {
+            temp = 255;
+          } else if (temp < 0) {
+            temp = 0;
+          }
+          DCT_image[MAX * a + b] = temp;
         }
       }
     }
@@ -369,7 +386,9 @@ int main() {
     }
   }
 
+  make_bmp(DCT_image, "DCT_image_Lena_CPP");
   make_bmp(restored_image, "Restored_DCT_Lena_CPP");
+
   // MSE값을 구한다.
   long long int nTmp = 0;
   double dmse = 0;

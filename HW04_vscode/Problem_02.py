@@ -339,18 +339,7 @@ def main():
 
     mse = MSE(raw_image, restored_image)
     print(mse)
-    # 이 부분에서 그래프를 그려서 주파수를 확인해야한다.
-    # frequency_data 를 이용
-    print("Draw Graph Start")
 
-    x = np.arange(MATRIX_MAX * MATRIX_MAX / B_SIZE)
-    y = np.array(frequency_data)
-    y = y[0: (MATRIX_MAX * int(MATRIX_MAX / B_SIZE))].copy()
-    plt.plot(x, y, '-')
-    plt.show()
-
-    # draw_graph(frequency_data)
-    print("Draw Graph Clear")
     reverse_img(restored_image)
     create_bmp_img(BMPHEADERS, restored_image, new_img_path)
 
